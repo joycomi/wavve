@@ -1,0 +1,74 @@
+server:
+  port: 8088
+
+---
+
+spring:
+  profiles: default
+  cloud:
+    gateway:
+      routes:
+        - id: video
+          uri: http://localhost:8081
+          predicates:
+            - Path=/videos/** 
+        - id: rental
+          uri: http://localhost:8082
+          predicates:
+            - Path=/rentals/** 
+        - id: pay
+          uri: http://localhost:8083
+          predicates:
+            - Path=/pays/**,/refunds/** 
+        - id: mypage
+          uri: http://localhost:8084
+          predicates:
+            - Path= /mypages/**
+      globalcors:
+        corsConfigurations:
+          '[/**]':
+            allowedOrigins:
+              - "*"
+            allowedMethods:
+              - "*"
+            allowedHeaders:
+              - "*"
+            allowCredentials: true
+
+
+---
+
+spring:
+  profiles: docker
+  cloud:
+    gateway:
+      routes:
+        - id: video
+          uri: http://video:8080
+          predicates:
+            - Path=/videos/** 
+        - id: rental
+          uri: http://rental:8080
+          predicates:
+            - Path=/rentals/** 
+        - id: pay
+          uri: http://pay:8080
+          predicates:
+            - Path=/pays/**,/refunds/** 
+        - id: mypage
+          uri: http://mypage:8080
+          predicates:
+            - Path= /mypages/**
+      globalcors:
+        corsConfigurations:
+          '[/**]':
+            allowedOrigins:
+              - "*"
+            allowedMethods:
+              - "*"
+            allowedHeaders:
+              - "*"
+            allowCredentials: true
+
+server:
+  port: 8080

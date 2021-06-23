@@ -1,0 +1,13 @@
+  apiVersion: networking.istio.io/v1alpha3
+  kind: VirtualService
+  metadata:
+    name: vs-video-network-rule
+    namespace: wavve
+  spec:
+    hosts:
+    - video
+    http:
+    - route:
+      - destination:
+          host: video
+      timeout: 3s

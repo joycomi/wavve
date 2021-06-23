@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: rental-configmap
+  namespace: wavve
+data:
+  pay-url: http://pay:8080

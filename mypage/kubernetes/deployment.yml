@@ -1,0 +1,45 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mypage
+  namespace: wavve
+  labels:
+    app: mypage
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mypage
+  template:
+    metadata:
+      labels:
+        app: mypage
+    spec:
+      containers:
+        - name: mypage
+          image: wavve.azurecr.io/mypage:latest
+          ports:
+            - containerPort: 8080
+          readinessProbe:
+            httpGet:
+              path: '/actuator/health'
+              port: 8080
+            initialDelaySeconds: 10
+            timeoutSeconds: 2
+            periodSeconds: 5
+            failureThreshold: 10
+          livenessProbe:
+            httpGet:
+              path: '/actuator/health'
+              port: 8080
+            initialDelaySeconds: 120
+            timeoutSeconds: 2
+            periodSeconds: 5
+            failureThreshold: 5
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "250m"
+            limits:
+              memory: "500Mi"
+              cpu: "500m"

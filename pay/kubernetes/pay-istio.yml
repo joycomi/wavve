@@ -1,0 +1,13 @@
+  apiVersion: networking.istio.io/v1alpha3
+  kind: VirtualService
+  metadata:
+    name: vs-pay-network-rule
+    namespace: wavve
+  spec:
+    hosts:
+    - pay
+    http:
+    - route:
+      - destination:
+          host: pay
+      timeout: 1s
