@@ -13,7 +13,6 @@ import java.util.Optional;
 @Service
 public class MypageViewHandler {
 
-
     @Autowired
     private MypageRepository mypageRepository;
 
@@ -40,15 +39,14 @@ public class MypageViewHandler {
         }
     }
 
-
     @StreamListener(KafkaProcessor.INPUT)
     public void whenBookingCancelled_then_UPDATE_1(@Payload BookingCancelled bookingCancelled) {
         try {
             if (!bookingCancelled.validate()) return;
                 // view 객체 조회
                 Optional<Mypage> mypageOptional = mypageRepository.findById(bookingCancelled.getRentId());                
-            //Optional<Mypage> mypageOptional = mypageRepository.findByRentId(bookingCancelled.getId());
-            if( mypageOptional.isPresent()) {
+
+                if( mypageOptional.isPresent()) {
                 Mypage mypage = mypageOptional.get();
                 // view 객체에 이벤트의 eventDirectValue 를 set 함
                     mypage.setStatus(bookingCancelled.getStatus());
@@ -60,12 +58,12 @@ public class MypageViewHandler {
             e.printStackTrace();
         }
     }
+
     @StreamListener(KafkaProcessor.INPUT)
     public void whenVideoRented_then_UPDATE_2(@Payload VideoRented videoRented) {
         try {
             if (!videoRented.validate()) return;
                 // view 객체 조회
-            //Optional<Mypage> mypageOptional = mypageRepository.findByRentId(videoRented.getRentId());
             Optional<Mypage> mypageOptional = mypageRepository.findById(videoRented.getRentId());
             if( mypageOptional.isPresent()) {
                 Mypage mypage = mypageOptional.get();
@@ -79,12 +77,12 @@ public class MypageViewHandler {
             e.printStackTrace();
         }
     }
+
     @StreamListener(KafkaProcessor.INPUT)
     public void whenVideoReturned_then_UPDATE_3(@Payload VideoReturned videoReturned) {
         try {
             if (!videoReturned.validate()) return;
                 // view 객체 조회
-            //Optional<Mypage> mypageOptional = mypageRepository.findByRentId(videoReturned.getRentId());
             Optional<Mypage> mypageOptional = mypageRepository.findById(videoReturned.getRentId());
             if( mypageOptional.isPresent()) {
                 Mypage mypage = mypageOptional.get();

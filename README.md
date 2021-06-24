@@ -41,15 +41,13 @@ git clone https://github.com/joycomi/wavve.git
 
 ## 기능적 요구사항
 
-* 점주는 비디오 정보를 등록한다.
-
-* 백신 관리자는 백신 재고를 추가한다.
+* 관리자는 비디오 정보를 등록한다.
 * 고객은 비디오를 예약 할 수 있다.
 * 비디오 예약은 결제가 완료 되어야 할 수 있다.
 * 고객은 비디오 예약을 취소 할 수 있다.
-* 비디오 예약이 취소 되면, 환불 내역은 별도 기록 된다.
-* 비디오는 등록, 예약, 예약취소, 대여, 반납에 따른 상태 정보가 관리 된다.
-* 고객은 비디오 예약정보 및 상태정보를 조회 확인 할 수 있다. 
+* 고객은 예약된 비디오를 대여, 반납 할 수 있다.
+* 비디오의 각 상태(등록,예약,예약취소, 대여, 반납)는 관리 된다.
+* 고객은 비디오 예약정보를 조회 확인 할 수 있다. 
 * 예약 서비스는 게이트웨이를 통해 고객과 통신한다.
 
 
@@ -63,9 +61,13 @@ git clone https://github.com/joycomi/wavve.git
     * 고객은 MyPage에서 비디오 예약정보 및 상태를 확인 할 수 있어야 한다. (CQRS)
 
 
+# 분석/설계
 
+## AS-IS 조직 (Horizontally-Aligned)
+![Horizontally-Aligned](https://user-images.githubusercontent.com/2360083/119254418-278d0d80-bbf1-11eb-83d1-494ba83aeaf1.png)
 
-# Event Storming 결과
+## TO-BE 조직 (Vertically-Aligned)
+![image](https://user-images.githubusercontent.com/82795806/123185344-ad41f880-d4d0-11eb-9f2d-321bf3050b55.png)
 
 ## Event Storming 최종 결과
 ![image](https://user-images.githubusercontent.com/82795806/123125804-ce302c80-d483-11eb-831b-158a242aa465.png)
@@ -78,11 +80,11 @@ git clone https://github.com/joycomi/wavve.git
 
 ## 기능 요구사항 Coverage(작성필요)
 
-![image](https://user-images.githubusercontent.com/61259324/120993819-df5c1680-c7be-11eb-86c0-0c0cc1655310.png)
+![image](https://user-images.githubusercontent.com/82795806/123188689-6c011700-d4d7-11eb-8bb4-db081970bc32.png)
 
-![image](https://user-images.githubusercontent.com/61259324/120994060-1b8f7700-c7bf-11eb-8576-c9942300dcc2.png)
+![image](https://user-images.githubusercontent.com/82795806/123188812-a36fc380-d4d7-11eb-81d5-a7770b97b9fc.png)
 
-![image](https://user-images.githubusercontent.com/61259324/120994206-3d88f980-c7bf-11eb-842b-73118d6e89ce.png)
+![image](https://user-images.githubusercontent.com/82795806/123188843-b97d8400-d4d7-11eb-888f-b2f2e08c5f1c.png)
 
 ## 헥사고날 아키텍처 다이어그램 도출
 ![image](https://user-images.githubusercontent.com/82795806/123126199-25360180-d484-11eb-8a50-bf462e509a20.png)
