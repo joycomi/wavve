@@ -911,22 +911,28 @@ $ kubectl label namespace wavve istio-injection=enabled
 ![image](https://user-images.githubusercontent.com/82795806/123223846-34f92880-d50c-11eb-9769-e69f55ca94b4.png)
 
 
-- Booking 서비스 재배포 후 Pod에 CB 부착 확인
+- 서비스 재배포 후 Pod에 CB 부착 확인
 
-![image](https://user-images.githubusercontent.com/82795806/120985804-ed0d9e00-c7b6-11eb-9f13-8a961c73adc0.png)
+![image](https://user-images.githubusercontent.com/82795806/123238029-21a08a00-d519-11eb-8e63-2a8d8267bac8.png)
 
 
-- 부하테스터 siege 툴을 통한 서킷 브레이커 동작 확인:
-  - 동시사용자 100명, 60초 동안 실시
+- Siege pod에 진입하여 워크로드를 걸어준다.
+```sh
+kubectl exec -it pod/siege -c siege -n wavve -- /bin/bash
+```
+
+- 부하테스터 siege 툴을 통한 서킷 브레이커 동작 확인
+
+  (동시사용자 150명, 10초 동안 실시)
 
 ```sh
-$ siege -c100 -t10S -v --content-type "application/json" 'http://booking:8080/bookings POST {"vaccineId":1, "vcName":"FIZER", "userId":5, "status":"BOOKED"}'
+$ siege -c150 -t10S -v --content-type "application/json" 'http://rental:8080/rentals POST {"videoId":1, "videoTitle":"AAB", "rentPrice":1000, "status":"OK", "memId":"Z"}'
 ```
-![image](https://user-images.githubusercontent.com/82795806/120986972-1549cc80-c7b8-11eb-83e1-7bac5a0e80ed.png)
+![image](https://user-images.githubusercontent.com/82795806/123239397-46493180-d51a-11eb-9cf1-c9e7d4451191.png)
 
 
 - 운영시스템은 죽지 않고 지속적으로 CB 에 의하여 적절히 회로가 열림과 닫힘이 벌어지면서 자원을 보호하고 있음을 보여줌. 
-- 약 84%정도 정상적으로 처리되었음.
+- 약 97%정도 정상적으로 처리되었음.
 
 ***
 
@@ -948,22 +954,30 @@ $ siege -c100 -t10S -v --content-type "application/json" 'http://booking:8080/bo
       cpu: "500m"
 ```
 
-- 예약 서비스에 대한 replica 를 동적으로 늘려주도록 HPA 를 설정한다. 설정은 CPU 사용량이 15프로를 넘어서면 replica 를 10개까지 늘려준다:
+- rental vs를 삭제한다.
+
+![image](https://user-images.githubusercontent.com/82795806/123242785-57477200-d51d-11eb-8943-d6f781c3d11d.png)
+
+
+- 예약 서비스에 대한 replica 를 동적으로 늘려주도록 HPA 를 설정한다. 설정은 CPU 사용량이 10프로를 넘어서면 replica 를 10개까지 늘려준다:
 
 ```sh
-$ kubectl autoscale deploy rental --min=1 --max=10 --cpu-percent=15
+$ kubectl autoscale deploy rental --min=1 --max=10 --cpu-percent=10
 ```
-
-![image](https://user-images.githubusercontent.com/82795806/123220779-3e34c600-d509-11eb-82da-2b95b0ff8ccf.png)
+![image](https://user-images.githubusercontent.com/82795806/123242697-4139b180-d51d-11eb-9769-42b28fec2a03.png)
 
 - Siege pod에 진입하여 워크로드를 걸어준다.
+  
 ```sh
 kubectl exec -it pod/siege -c siege -n wavve -- /bin/bash
 ```
 
+- 부하테스터 siege 툴을 통한 서킷 브레이커 동작 확인
+  
+  (동시사용자 150명, 10초 동안 실시)
 
 ```sh
-$ siege -c200 -t10S -v --content-type "application/json" 'http://booking:8080/bookings POST {"vaccineId":1, "vcName":"FIZER", "userId":5, "status":"BOOKED"}'
+siege -c150 -t10S -v --content-type "application/json" 'http://rental:8080/rentals POST {"videoId":1, "videoTitle":"AAB", "rentPrice":1000, "status":"OK", "memId":"Z"}'
 ```
 
 - 오토스케일이 어떻게 되고 있는지 모니터링을 걸어둔다:
@@ -976,21 +990,20 @@ $ watch kubectl get all
 
 * siege 부하테스트 - 전
 
-![image](https://user-images.githubusercontent.com/82795806/120990254-51caf780-c7bb-11eb-98a6-243b69344f12.png)
+![image](https://user-images.githubusercontent.com/82795806/123238029-21a08a00-d519-11eb-8e63-2a8d8267bac8.png)
 
 * siege 부하테스트 - 후
 
-![image](https://user-images.githubusercontent.com/82795806/120989337-66f35680-c7ba-11eb-9b4e-b1425d4a3c2f.png)
+![image](https://user-images.githubusercontent.com/82795806/123241580-3f232300-d51c-11eb-8820-463143857081.png)
 
 
-- siege 의 로그를 보아도 전체적인 성공률이 높아진 것을 확인 할 수 있다. 
-
-![image](https://user-images.githubusercontent.com/82795806/120990490-93f43900-c7bb-11eb-9295-c3a0a8165ff6.png)
-
+- siege 의 로그를 통해 전체적인 성공률이 높아진 것을 확인 할 수 있다. 
+![image](https://user-images.githubusercontent.com/82795806/123243196-bf965380-d51d-11eb-9e42-362672a8e8f4.png)
 
 ## Zero-Downtime deploy (Readiness Probe)
 
 - deployment.yml에 정상 적용되어 있는 readinessProbe  
+
 ```yml
 readinessProbe:
   httpGet:
@@ -1003,7 +1016,7 @@ readinessProbe:
 ```
 
 - deployment.yml에서 readiness 설정 제거 후, 배포중 siege 테스트 진행  
-    - hpa 설정에 의해 target 지수 초과하여 booking scale-out 진행됨  
+    - hpa 설정에 의해 target 지수 초과하여 rental scale-out 진행됨 
         ![readiness-배포중](https://user-images.githubusercontent.com/18115456/120991348-7ecbda00-c7bc-11eb-8b4d-bdb6dacad1cf.png)
 
     - booking이 배포되는 중,  
