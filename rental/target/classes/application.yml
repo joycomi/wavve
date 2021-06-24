@@ -66,10 +66,10 @@ spring:
         event-out:
           destination: video
           contentType: application/json
-logging:
-  level:
-    root: info
-  file: /mnt/azure/logs/rental.log
+# logging:
+#   level:
+#     root: info
+#   file: /mnt/azure/logs/rental.log
 api:
   pay:
     url: ${pay-url}

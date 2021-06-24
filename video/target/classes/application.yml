@@ -62,7 +62,7 @@ spring:
         event-out:
           destination: video
           contentType: application/json
-logging:
-  level:
-    root: info
-  file: /mnt/azure/logs/video.log
+# logging:
+#   level:
+#     root: info
+#   file: /mnt/azure/logs/video.log
