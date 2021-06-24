@@ -36,9 +36,9 @@ spec:
             timeoutSeconds: 2
             periodSeconds: 5
             failureThreshold: 5
-          volumeMounts:
-            - name: volume
-              mountPath: "/mnt/azure"
+          # volumeMounts:
+          #   - name: volume
+          #     mountPath: "/mnt/azure"
           resources:
             requests:
               memory: "64Mi"
@@ -46,7 +46,7 @@ spec:
             limits:
               memory: "500Mi"
               cpu: "500m"
-      volumes:
-      - name: volume
-        persistentVolumeClaim:
-          claimName: video-disk
+      # volumes:
+      # - name: volume
+      #   persistentVolumeClaim:
+      #     claimName: video-disk

@@ -1,4 +1,4 @@
-# 개인과제(문혜영) Project
+# 개인과제 Project
 ## 비디오 예약 & 대여 관리
 ![image](https://user-images.githubusercontent.com/82795806/123117533-c8831880-d47c-11eb-9bda-98d5a0424bee.png)
 
@@ -997,7 +997,8 @@ $ watch kubectl get all
 ![image](https://user-images.githubusercontent.com/82795806/123241580-3f232300-d51c-11eb-8820-463143857081.png)
 
 
-- siege 의 로그를 통해 전체적인 성공률이 높아진 것을 확인 할 수 있다. 
+- siege 의 로그를 통해 전체적인 성공률이 높아진 것을 확인 할 수 있다.
+ 
 ![image](https://user-images.githubusercontent.com/82795806/123243196-bf965380-d51d-11eb-9e42-362672a8e8f4.png)
 
 ## Zero-Downtime deploy (Readiness Probe)
