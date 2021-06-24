@@ -26,7 +26,6 @@ public class PolicyHandler{
         
         //video.setVideoId(paid.getVideoId());
         video.setStatus("BOOKED");
-
         videoRepository.save(video);
             
     }
