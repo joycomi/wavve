@@ -184,7 +184,7 @@ public class Rental {
 
     }
 
-... 이하 생략 ...
+... 생략 ...
 }
 ```
 
@@ -225,7 +225,7 @@ public class PolicyHandler{
         }
            
     }
-...
+... 생략 ...
 ```
 
  rental 서비스의 BookingRepository.java
@@ -325,7 +325,7 @@ spring:
 server:
   port: 8080
 ```  
-rental 서비스의 GateWay 적용
+-- rental 서비스의 GateWay 적용
 ![image](https://user-images.githubusercontent.com/82795806/123214470-3887b200-d502-11eb-98f2-3aa8b4568a8f.png)
 
 ## CQRS
@@ -333,7 +333,7 @@ Materialized View 를 구현하여, 타 마이크로서비스의 데이터 원�
 
 본 프로젝트에서 View 역할은 mypage 서비스가 수행한다.
 
-예약대여(rental) 실행 후 myPage 화면
+-- 예약대여(rental) 실행 후 myPage 화면
 ![image](https://user-images.githubusercontent.com/82795806/123214654-771d6c80-d502-11eb-9505-40749d86ca39.png)
 
 ## 폴리글랏 퍼시스턴스
@@ -353,9 +353,7 @@ mypage 서비스의 DB와 video/rental/pay 서비스의 DB를 다른 DB를 사�
 예약대여(rental)->(pay) 간의 호출은 동기식 일관성을 유지하는 트랜잭션으로 처리하기로 하였다. 
 호출 프로토콜은 Rest Repository 에 의해 노출되어있는 REST 서비스를 FeignClient 를 이용하여 호출하도록 한다.
 
-
-
-rental 서비스 내 external.PayService
+-- rental 서비스 내 external.PayService
 
 ```java
 ...
@@ -368,7 +366,7 @@ public interface PayService {
 }
 ```
 
-rental 서비스 내 Req/Resp
+-- rental 서비스 내 Req/Resp
 
 ```java
     @PostPersist
@@ -398,10 +396,10 @@ rental 서비스 내 Req/Resp
 
 * 비디오 예약 시, 결제 OK/NotOK 여부 체크
 
-결제가 OK이면, 예약 처리(BOOKED)
+-- 결제가 OK이면, 예약 처리(BOOKED)
 ![image](https://user-images.githubusercontent.com/82795806/123216933-03c92a00-d505-11eb-96cc-bbd99f92075a.png)
 
-결제가 NotOK이면, 예약 불가 처리(Internal Server Error)
+-- 결제가 NotOK이면, 예약 불가 처리(Internal Server Error)
 ![image](https://user-images.githubusercontent.com/82795806/123217040-1ba0ae00-d505-11eb-9a8f-d61281a1078e.png)
 
 # 운영
@@ -429,7 +427,7 @@ kubectl get all -n kafka
 ```sh
 pip install --upgrade httpie
 ```
-## siege 설치
+## siege 실행
 ```sh
 kubectl run siege --image=apexacme/siege-nginx -n wavve
 ```
@@ -509,7 +507,7 @@ kubectl apply -f deployment.yml
 kubectl apply -f service.yaml
 ```
 
-- wavve/gateway/kubernetes/deployment.yml 파일 
+- <code>gateway/kubernetes/deployment.yml</code> 파일 
 
 ```yml
 apiVersion: apps/v1
@@ -536,7 +534,7 @@ spec:
             - containerPort: 8080
 ```	  
 
-- wavve/gateway/kubernetes/service.yaml 파일 
+- <code>gateway/kubernetes/service.yaml</code> 파일 
 
 ```yml
 apiVersion: v1
@@ -555,7 +553,7 @@ spec:
     app: gateway
 ```	  
 
-- wavve/rental/kubernetes/deployment.yml 파일 
+- <code>rental/kubernetes/deployment.yml</code> 파일 
 
 ```yml
 apiVersion: apps/v1
@@ -589,7 +587,7 @@ spec:
 ...
 ```	  
 
-- wavve/rental/kubernetes/service.yaml 파일 
+- <code>wavve/rental/kubernetes/service.yaml</code> 파일 
 
 ```yml
 apiVersion: v1
@@ -691,13 +689,15 @@ kubectl delete configmap apiurl -n wavve
 kubectl delete -f deployment.yml
 kubectl apply -f deployment.yml
 ```
-![image](https://user-images.githubusercontent.com/82795806/123198552-44ff1100-d4e8-11eb-93e5-c1ef0695fdb6.png)
+![image](https://user-images.githubusercontent.com/82795806/123299319-5d0c7a00-d554-11eb-9393-ad6167d1c270.png)
+
 
 
 ```sh
 kubectl describe pod/rental-5ccc5f69cc-sn9ks -n wavve
 ```
-![image](https://user-images.githubusercontent.com/82795806/123198687-85f72580-d4e8-11eb-94c6-82e76bda6b9c.png)
+![image](https://user-images.githubusercontent.com/82795806/123299172-35b5ad00-d554-11eb-9c88-2dd0319add70.png)
+
 
 
 ## Persistence Volume
@@ -722,10 +722,9 @@ spec:
       storage: 1Gi
 ```
 
+- Containers 아래 Volumn Mount 추가
+
 <code>deployment.yml</code> (pay\kubernetes\deployment.yml)
-
-- Container에 Volumn Mount
-
 ```yml
 apiVersion: apps/v1
 kind: Deployment
@@ -760,16 +759,14 @@ spec:
           claimName: pay-disk
 ```
 
-<code>application.yml</code> (pay\src\main\resources\application.yml)
-- profile: **docker**
-- logging.file: PVC Mount 경로
-<code>application.yml</code>
+<code>application.yml 설정 추가</code> (pay\src\main\resources\application.yml)
+
 ```yml
 
 spring:
   profiles: docker
   cloud:
-  ... #아래 옵션 추가#
+  ... # pvc 설정 추가#
 logging:
   level:
     root: info
@@ -781,22 +778,20 @@ log:
     file: refunded.log
 ```
 
-마운트 경로에 logging file 생성 확인
+-- 마운트 경로에 logging file 생성 확인
 
 ```sh
-$ kubectl exec -it pod/pay-7df9779d8f-vk4q9 -n wavve -- /bin/sh
+kubectl exec -it pod/pay-7df9779d8f-vk4q9 -n wavve -- /bin/sh
 $ cd /mnt/azure/logs
 $ tail -n 20 -f pay.log
 ```
 ![image](https://user-images.githubusercontent.com/82795806/123204703-9660cd80-d4f3-11eb-8682-0687962e31f9.png)
 
-
-
 ![image](https://user-images.githubusercontent.com/82795806/123204760-b09aab80-d4f3-11eb-89bd-2f1192be4b05.png)
 
 마운트 경로에 예약취소에 따른 refunded(환불정보) log 생성 확인
 ```sh
-$ kubectl exec -it pod/pay-7df9779d8f-vk4q9 -n wavve -- /bin/sh
+kubectl exec -it pod/pay-7df9779d8f-vk4q9 -n wavve -- /bin/sh
 $ cd /mnt/azure/logs
 $ tail -n 20 -f refunded.log
 ```
@@ -866,23 +861,24 @@ public class PolicyHandler{
 - Istio 다운로드 및 PATH 추가, 설치, namespace에 istio주입
 
 ```sh
-$ curl -L https://istio.io/downloadIstio | ISTIO_VERSION=1.7.1 TARGET_ARCH=x86_64 sh -
+curl -L https://istio.io/downloadIstio | ISTIO_VERSION=1.7.1 TARGET_ARCH=x86_64 sh -
 ※ istio v1.7.1은 Kubernetes 1.16이상에서만 동작
 ```
 
 - istio PATH 추가
 
 ```sh
-$ cd istio-1.7.1
-$ export PATH=$PWD/bin:$PATH
+cd istio-1.7.1
+export PATH=$PWD/bin:$PATH
 ```
 
-- istio 설치
+- istio 설치 및 결과
 
 ```sh
-$ istioctl install --set profile=demo --set hub=gcr.io/istio-release
+istioctl install --set profile=demo --set hub=gcr.io/istio-release
 ※ Docker Hub Rate Limiting 우회 설정
 ```
+(추가-결과화면)
 
 - namespace에 istio주입
 
@@ -940,7 +936,7 @@ $ siege -c150 -t10S -v --content-type "application/json" 'http://rental:8080/ren
 
   앞서 CB 는 시스템을 안정되게 운영할 수 있게 해줬지만 사용자의 요청을 100% 받아들여주지 못했기 때문에 이에 대한 보완책으로 자동화된 확장 기능을 적용하고자 한다. 
 
-- 예약 서비스에 리소스에 대한 사용량을 정의한다.
+- 예약대여 서비스에 리소스에 사용량 제한 설정을 추가한다.
 
 <code>rental/kubernetes/deployment.yml</code>
 
@@ -969,7 +965,7 @@ $ kubectl autoscale deploy rental --min=1 --max=10 --cpu-percent=10
 - Siege pod에 진입하여 워크로드를 걸어준다.
   
 ```sh
-kubectl exec -it pod/siege -c siege -n wavve -- /bin/bash
+$ kubectl exec -it pod/siege -c siege -n wavve -- /bin/bash
 ```
 
 - 부하테스터 siege 툴을 통한 서킷 브레이커 동작 확인
@@ -977,7 +973,7 @@ kubectl exec -it pod/siege -c siege -n wavve -- /bin/bash
   (동시사용자 150명, 10초 동안 실시)
 
 ```sh
-siege -c150 -t10S -v --content-type "application/json" 'http://rental:8080/rentals POST {"videoId":1, "videoTitle":"AAB", "rentPrice":1000, "status":"OK", "memId":"Z"}'
+$ siege -c150 -t10S -v --content-type "application/json" 'http://rental:8080/rentals POST {"videoId":1, "videoTitle":"AAB", "rentPrice":1000, "status":"OK", "memId":"Z"}'
 ```
 
 - 오토스케일이 어떻게 되고 있는지 모니터링을 걸어둔다:
@@ -998,12 +994,12 @@ $ watch kubectl get all
 
 
 - siege 의 로그를 통해 전체적인 성공률이 높아진 것을 확인 할 수 있다.
- 
+
 ![image](https://user-images.githubusercontent.com/82795806/123243196-bf965380-d51d-11eb-9e42-362672a8e8f4.png)
 
 ## Zero-Downtime deploy (Readiness Probe)
 
-- deployment.yml에 정상 적용되어 있는 readinessProbe  
+- video 서비스 deployment.yml에 정상 적용되어 있는 readinessProbe
 
 ```yml
 readinessProbe:
@@ -1018,21 +1014,34 @@ readinessProbe:
 
 - deployment.yml에서 readiness 설정 제거 후, 배포중 siege 테스트 진행  
     - hpa 설정에 의해 target 지수 초과하여 rental scale-out 진행됨 
-        ![readiness-배포중](https://user-images.githubusercontent.com/18115456/120991348-7ecbda00-c7bc-11eb-8b4d-bdb6dacad1cf.png)
 
-    - booking이 배포되는 중,  
-    정상 실행중인 booking으로의 요청은 성공(201),  
-    배포중인 booking으로의 요청은 실패(503 - Service Unavailable) 확인
-        ![readiness2](https://user-images.githubusercontent.com/18115456/120987386-81c4cb80-c7b8-11eb-84e7-5c00a9b1a2ff.PNG)  
+-- hpa 설정
+```sh
+$ kubectl autoscale deploy video --min=1 --max=10 --cpu-percent=10 -n wavve
+```
+![image](https://user-images.githubusercontent.com/82795806/123293855-49aae000-d54f-11eb-9ce8-bc775590d476.png)
+
+-- video 서비스 초과 생성
+![image](https://user-images.githubusercontent.com/82795806/123293757-37c93d00-d54f-11eb-864c-c30a79315dc5.png)
+
+![image](https://user-images.githubusercontent.com/82795806/123294106-82e35000-d54f-11eb-8a1d-25fbb011fe6d.png)
+
+-- video가 배포되는 중,  
+정상 실행중인 video로의 요청은 성공(201),  
+배포중인 booking으로의 요청은 실패(503 - Service Unavailable) 확인
+
+![image](https://user-images.githubusercontent.com/82795806/123294468-d786cb00-d54f-11eb-85d2-9444550417c5.png)
 
 - 다시 readiness 정상 적용 후, Availability 100% 확인  
-![readiness4](https://user-images.githubusercontent.com/18115456/120987393-825d6200-c7b8-11eb-887e-d01519123d42.PNG)
 
+![image](https://user-images.githubusercontent.com/82795806/123294686-0a30c380-d550-11eb-9339-b07a811b7b37.png)
     
 ## Self-healing (Liveness Probe)
 
-- deployment.yml에 정상 적용되어 있는 livenessProbe  
-
+- video deployment.yml에 정상 적용되어 있는 livenessProbe  
+ 
+ 
+<code>video/kubernetes/deployment.yml</code>
 ```yml
 livenessProbe:
   httpGet:
@@ -1044,9 +1053,22 @@ livenessProbe:
   failureThreshold: 5
 ```
 
-- port 및 path 잘못된 값으로 변경 후, retry 시도 확인 (in booking 서비스)  
-    - booking deploy yml 수정  
-        ![selfhealing(liveness)-세팅변경](https://user-images.githubusercontent.com/18115456/120985806-ed0d9e00-c7b6-11eb-834f-ffd2c627ecf0.png)
+- port 및 path 잘못된 값으로 변경 된 yml 서비스 생성 후 retry 시도 확인
 
-    - retry 시도 확인  
-        ![selfhealing(liveness)-restarts수](https://user-images.githubusercontent.com/18115456/120985797-ebdc7100-c7b6-11eb-8b29-fed32d4a15a3.png)  
+<code>video/kubernetes/failed_liveness.yml</code>
+```yml
+livenessProbe:
+  httpGet:
+    path: '/actuator/failed'
+    port: 8090
+  initialDelaySeconds: 120
+  timeoutSeconds: 2
+  periodSeconds: 5
+  failureThreshold: 5
+```
+
+- retry 시도 확인
+
+![image](https://user-images.githubusercontent.com/82795806/123296427-9a233d00-d551-11eb-9aac-5b5b520d5322.png)
+
+끝.
