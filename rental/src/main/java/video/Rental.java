@@ -18,8 +18,16 @@ public class Rental {
 
     @PostPersist
     public void onPostPersist(){
-        //예약&결제정보 전달
 
+        //부하테스트 시간끌기
+        try {
+            Thread.currentThread();
+            Thread.sleep((long) (400 + Math.random() * 220));
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
+        //예약&결제정보 전달
         VideoBooked videoBooked = new VideoBooked();
         BeanUtils.copyProperties(this, videoBooked);
         videoBooked.publishAfterCommit();

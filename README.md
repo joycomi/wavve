@@ -112,7 +112,7 @@ mvn spring-boot:run
 cd gateway
 mvn spring-boot:run 
 ```
-## DDD(Domain-Driven-Design)의 적용 (이하작성필요)
+## DDD(Domain-Driven-Design)의 적용
 msaez.io 를 통해 구현한 Aggregate 단위로 Entity 를 선언 후, 구현을 진행하였다.
 Entity Pattern 과 Repository Pattern을 적용하기 위해 Spring Data REST 의 RestRepository 를 적용하였다.
 
@@ -225,11 +225,7 @@ public class PolicyHandler{
         }
            
     }
-
-    @StreamListener(KafkaProcessor.INPUT)
-    public void whatever(@Payload String eventString){}
-
-}
+...
 ```
 
  rental 서비스의 BookingRepository.java
@@ -329,24 +325,17 @@ spring:
 server:
   port: 8080
 ```  
-mypage 서비스의 GateWay 적용
-
-![image](https://user-images.githubusercontent.com/82795806/123207410-4c2e1b00-d4f8-11eb-9a3b-e4d00cc2bc3d.png)
-
+rental 서비스의 GateWay 적용
+![image](https://user-images.githubusercontent.com/82795806/123214470-3887b200-d502-11eb-98f2-3aa8b4568a8f.png)
 
 ## CQRS
 Materialized View 를 구현하여, 타 마이크로서비스의 데이터 원본에 접근없이(Composite 서비스나 조인SQL 등 없이) 도 내 서비스의 화면 구성과 잦은 조회가 가능하게 구현하였다
 
 본 프로젝트에서 View 역할은 mypage 서비스가 수행한다.
 
-예약(Booked) 실행 후 myPage 화면
- 
-![image](https://user-images.githubusercontent.com/82795860/121005958-526b8a00-c7cb-11eb-9bae-ad4bd70ef2eb.png)
+예약대여(rental) 실행 후 myPage 화면
+![image](https://user-images.githubusercontent.com/82795806/123214654-771d6c80-d502-11eb-9505-40749d86ca39.png)
 
-
-
-![image](https://user-images.githubusercontent.com/82795860/121006311-bb530200-c7cb-11eb-9d85-a7b22d1a2729.png)
-  
 ## 폴리글랏 퍼시스턴스
 mypage 서비스의 DB와 video/rental/pay 서비스의 DB를 다른 DB를 사용하여 MSA간 서로 다른 종류의 DB간에도 문제 없이 동작하여 다형성을 만족하는지 확인하였다.
 (폴리글랏을 만족)
@@ -358,107 +347,63 @@ mypage 서비스의 DB와 video/rental/pay 서비스의 DB를 다른 DB를 사�
 |pay/refund| H2 |![image](https://user-images.githubusercontent.com/2360083/121104579-4f10e680-c83d-11eb-8cf3-002c3d7ff8dc.png)|
 |mypage| HSQL |![image](https://user-images.githubusercontent.com/2360083/120982836-1842be00-c7b4-11eb-91de-ab01170133fd.png)|
 
+
 ## 동기식 호출과 Fallback 처리
 분석단계에서의 조건 중 하나로  접종 예약 수량은 백신 재고수량을 초과 할 수 없으며
-예약(Booking)->(Vaccine) 간의 호출은 동기식 일관성을 유지하는 트랜잭션으로 처리하기로 하였다. 
+예약대여(rental)->(pay) 간의 호출은 동기식 일관성을 유지하는 트랜잭션으로 처리하기로 하였다. 
 호출 프로토콜은 Rest Repository 에 의해 노출되어있는 REST 서비스를 FeignClient 를 이용하여 호출하도록 한다.
 
 
 
-Booking 서비스 내 external.VaccineService
+rental 서비스 내 external.PayService
 
 ```java
-package anticorona.external;
+...
+@FeignClient(name="pay", url="${api.pay.url}")
+public interface PayService {
 
-import org.springframework.cloud.openfeign.FeignClient;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestMethod;
-import org.springframework.web.bind.annotation.RequestParam;
-
-import java.util.Date;
-
-@FeignClient(name="vaccine", url="http://${api.url.vaccine}:8080")
-public interface VaccineService {
-
-    @RequestMapping(method= RequestMethod.GET, path="/vaccines/checkAndBookStock")
-    public boolean checkAndBookStock(@RequestParam Long vaccineId);
+    @RequestMapping(method= RequestMethod.POST, path="/pays")
+    public void payment(@RequestBody Pay pay);
 
 }
 ```
 
-Booking 서비스 내 Req/Resp
+rental 서비스 내 Req/Resp
 
 ```java
     @PostPersist
-    public void onPostPersist() throws Exception {
-        if(BookingApplication.applicationContext.getBean(anticorona.external.VaccineService.class)
-            .checkAndBookStock(this.vaccineId)){
-                Booked booked = new Booked();
-                BeanUtils.copyProperties(this, booked);
-                booked.publishAfterCommit();
-            }
-        else{
-            throw new Exception("Out of Stock Exception Raised.");
-        }
+    public void onPostPersist(){
+        //예약&결제정보 전달
 
-    }
+        VideoBooked videoBooked = new VideoBooked();
+        BeanUtils.copyProperties(this, videoBooked);
+        videoBooked.publishAfterCommit();
+
+        //Pay서비스로 예약정보 전달
+        video.external.Pay pay = new video.external.Pay();
+        pay.setRentId(this.getRentId());
+        pay.setPrice(this.getRentPrice());
+        pay.setPayStatus(this.getStatus()); //OK, NotOK
+        pay.setVideoId(this.getVideoId());
+
+        // mappings goes here
+         RentalApplication.applicationContext.getBean(video.external.PayService.class)
+            .payment(pay);
+
+        }
 ```
 
-Vaccine 서비스 내 Booking 서비스 Feign Client 요청 대상
+### 동작 확인
+---
 
-```java
- @RestController
- public class VaccineController {
+* 비디오 예약 시, 결제 OK/NotOK 여부 체크
 
-     @Autowired
-     VaccineRepository vaccineRepository;
+결제가 OK이면, 예약 처리(BOOKED)
+![image](https://user-images.githubusercontent.com/82795806/123216933-03c92a00-d505-11eb-96cc-bbd99f92075a.png)
 
-     @RequestMapping(value = "/vaccines/checkAndBookStock",
-        method = RequestMethod.GET,
-        produces = "application/json;charset=UTF-8")
-    public boolean checkAndBookStock(HttpServletRequest request, HttpServletResponse response) {
-        System.out.println("##### /vaccine/checkAndBookStock  called #####");
+결제가 NotOK이면, 예약 불가 처리(Internal Server Error)
+![image](https://user-images.githubusercontent.com/82795806/123217040-1ba0ae00-d505-11eb-9a8f-d61281a1078e.png)
 
-        boolean status = false;
-
-        Long vaccineId = Long.valueOf(request.getParameter("vaccineId"));
-        
-        Optional<Vaccine> vaccine = vaccineRepository.findById(vaccineId);
-        if(vaccine.isPresent()){
-            Vaccine vaccineValue = vaccine.get();
-            //예약 가능한지 체크 
-            if(vaccineValue.getStock() - vaccineValue.getBookQty() > 0) {
-                //예약 가능하면 예약수량 증가
-                status = true;
-                vaccineValue.setBookQty(vaccineValue.getBookQty() + 1);
-                vaccineRepository.save(vaccineValue);
-            }
-        }
-
-        return status;
-     }
- }
-
-```
-
-동작 확인
-
-접종 예약하기 시도 시  백신의 재고 수량을 체크함
-
-![image](https://user-images.githubusercontent.com/82795860/120994076-1e8a6780-c7bf-11eb-8374-53f7a4336a1a.png)
-
-
-접종 예약 시 백신 재고수량을 초과하지 않으면 예약 가능
-
-![image](https://user-images.githubusercontent.com/82795860/120997798-78406100-c7c2-11eb-90fa-b8ff71f53c77.png)
-
-
-접종 예약시 백신 재고수량을 초과하여 예약시 예약안됨
-
-![image](https://user-images.githubusercontent.com/82795860/120993294-5b099380-c7be-11eb-8970-b2b0e28d6e40.png)
-
-  
 # 운영
 ## Kafka 설치
 ```sh
@@ -480,18 +425,22 @@ kubectl get all -n kafka
 ``` 
 ![image](https://user-images.githubusercontent.com/82795806/123200552-ec317780-d4eb-11eb-9627-21388a708745.png)
 
-# Httpie 설치
+## Httpie 설치
+```sh
 pip install --upgrade httpie
-
+```
+## siege 설치
+```sh
+kubectl run siege --image=apexacme/siege-nginx -n wavve
+```
 
 ## Deploy/ Pipeline
 각 구현체들은 각자의 source repository 에 구성되었고, 사용한 CI/CD 플랫폼은 Azure를 사용하였으며, pipeline build script 는 각 프로젝트 폴더 이하에 cloudbuild.yml 에 포함되었다.
 
-
-- git에서 소스 가져오기
+- Git Hub에서 소스 가져오기
 
 ```
-git clone --recurse-submodules https://github.com/dt-3team/anticorona.git
+git clone https://github.com/joycomi/wavve.git
 ```
 
 - Build 하기
@@ -513,7 +462,7 @@ cd ~/wavve/mypage
 mvn package
 ```
 
-- Docker Image Push/deploy/서비스생성(yml이용)
+- Docker Image Build & Push 후 deploy/service 생성(yml이용)
 
 ```sh
 -- 기본 namespace 설정
@@ -567,7 +516,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: gateway
-  namespace: anticorona
+  namespace: wavve
   labels:
     app: gateway
 spec:
@@ -582,19 +531,19 @@ spec:
     spec:
       containers:
         - name: gateway
-          image: skccanticorona.azurecr.io/gateway:latest
+          image: wavve.azurecr.io/gateway:latest
           ports:
             - containerPort: 8080
 ```	  
 
-- anticorona/gateway/kubernetes/service.yaml 파일 
+- wavve/gateway/kubernetes/service.yaml 파일 
 
 ```yml
 apiVersion: v1
 kind: Service
 metadata:
   name: gateway
-  namespace: anticorona
+  namespace: wavve
   labels:
     app: gateway
 spec:
@@ -606,62 +555,61 @@ spec:
     app: gateway
 ```	  
 
-- anticorona/booking/kubernetes/deployment.yml 파일 
+- wavve/rental/kubernetes/deployment.yml 파일 
 
 ```yml
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: booking
-  namespace: anticorona
+  name: rental
+  namespace: wavve
   labels:
-    app: booking
+    app: rental
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: booking
+      app: rental
   template:
     metadata:
       labels:
-        app: booking
+        app: rental
     spec:
       containers:
-        - name: booking
-          image: skccanticorona.azurecr.io/booking:latest
+        - name: rental
+          image: wavve.azurecr.io/rental:latest
           ports:
             - containerPort: 8080
           env:
-            - name: vaccine-url
+            - name: pay-url
               valueFrom:
                 configMapKeyRef:
                   name: apiurl
                   key: url
+...
 ```	  
 
-- anticorona/booking/kubernetes/service.yaml 파일 
+- wavve/rental/kubernetes/service.yaml 파일 
 
 ```yml
 apiVersion: v1
 kind: Service
 metadata:
-  name: booking
-  namespace: anticorona
+  name: rental
+  namespace: wavve
   labels:
-    app: booking
+    app: rental
 spec:
   ports:
     - port: 8080
       targetPort: 8080
   selector:
-    app: booking
+    app: rental
 ```	  
 
 - deploy 완료
 
-![image](https://user-images.githubusercontent.com/82795806/123196422-da000b00-d4e4-11eb-818d-be66dffac811.png)
-
-![image](https://user-images.githubusercontent.com/82795806/120998532-24824780-c7c3-11eb-8f01-d73860d68426.png)
+![image](https://user-images.githubusercontent.com/82795806/123218892-383de580-d507-11eb-8b55-c7bb1be361d3.png)
 
 ***
 
@@ -838,20 +786,80 @@ log:
 ```sh
 $ kubectl exec -it pod/pay-7df9779d8f-vk4q9 -n wavve -- /bin/sh
 $ cd /mnt/azure/logs
-$ tail -n 20 -f refunded.log
 $ tail -n 20 -f pay.log
 ```
 ![image](https://user-images.githubusercontent.com/82795806/123204703-9660cd80-d4f3-11eb-8682-0687962e31f9.png)
 
-![image](https://user-images.githubusercontent.com/82795806/123204736-a4165300-d4f3-11eb-8b53-ed050b288876.png)
+
 
 ![image](https://user-images.githubusercontent.com/82795806/123204760-b09aab80-d4f3-11eb-89bd-2f1192be4b05.png)
 
+마운트 경로에 예약취소에 따른 refunded(환불정보) log 생성 확인
+```sh
+$ kubectl exec -it pod/pay-7df9779d8f-vk4q9 -n wavve -- /bin/sh
+$ cd /mnt/azure/logs
+$ tail -n 20 -f refunded.log
+```
+![image](https://user-images.githubusercontent.com/82795806/123204736-a4165300-d4f3-11eb-8b53-ed050b288876.png)
 
+pay서비스 PolicyHandler 구현 (pay\src\main\java\video\PolicyHandler.java)
+
+-- 예약 취소 시 환불 내역 log파일 저장
+
+```java
+@Service
+public class PolicyHandler{
+    @Autowired PayRepository payRepository;
+    @Autowired RefundRepository refundRepository;
+
+    @Value("${log.refund.path}")
+    String PATH;
+
+    @Value("${log.refund.directory}")
+    String directoryName;
+
+    @Value("${log.refund.file}")
+    String file;
+    ...
+    @StreamListener(KafkaProcessor.INPUT)
+    public void wheneverRefunded_RegRefund(@Payload Refunded refunded) throws IOException {
+        //환불내역 저장
+        if(!refunded.validate()) return;
+
+        Refund refund = new Refund();
+        refund.setPayId(refunded.getPayId());
+        refund.setPrice(refunded.getPrice());
+        refund.setPayStatus("Refunded");
+        refund.setRentId(refunded.getRentId());
+        refundRepository.save(refund);
+
+        //환불내역 log 파일 기록
+        String str = refunded.toJson()+"\n";
+        String fileName = PATH+directoryName+"/"+file;
+        
+        File file  = new File(String.valueOf(fileName));
+        File directory = new File(String.valueOf(directoryName));
+        
+        if(!directory.exists()){
+            directory.mkdir();
+            if(!file.exists()){
+                file.getParentFile().mkdir();
+                file.createNewFile();
+            }
+        }
+
+        FileWriter fw = new FileWriter(file.getAbsoluteFile());
+        BufferedWriter bw = new BufferedWriter(fw);
+
+        bw.write(str);
+        bw.close();
+    }
+    ...
+```
 
 ## Circuit Breaker
 
-  * 서킷 브레이킹 프레임워크의 선택: Spring FeignClient + Istio를 설치하여, anticorona namespace에 주입하여 구현함
+  * 서킷 브레이킹 프레임워크의 선택: Spring FeignClient + Istio를 설치하여, wavve namespace에 주입하여 구현함
 
 시나리오는 예약(booking)-->백신(vaccine) 연결을 RESTful Request/Response 로 연동하여 구현이 되어있고, 예약 요청이 과도할 경우 CB 를 통하여 장애격리.
 
@@ -879,29 +887,28 @@ $ istioctl install --set profile=demo --set hub=gcr.io/istio-release
 - namespace에 istio주입
 
 ```sh
-$ kubectl label anticorona tutorial istio-injection=enabled
+$ kubectl label namespace wavve istio-injection=enabled
 ```
 
 - Virsual Service 생성 (Timeout 3초 설정)
-- anticorona/booking/kubernetes/booking-istio.yaml 파일 
+- wavve/rental/kubernetes/rental-istio.yaml 파일 
 
 ```yml
   apiVersion: networking.istio.io/v1alpha3
   kind: VirtualService
   metadata:
-    name: vs-booking-network-rule
-    namespace: anticorona
+    name: vs-rental-network-rule
+    namespace: wavve
   spec:
     hosts:
-    - booking
+    - rental
     http:
     - route:
       - destination:
-          host: booking
+          host: rental
       timeout: 3s
 ```	  
-
-![image](https://user-images.githubusercontent.com/82795806/120985451-956f3280-c7b6-11eb-95a4-eb5a8c1ebce4.png)
+![image](https://user-images.githubusercontent.com/82795806/123223846-34f92880-d50c-11eb-9769-e69f55ca94b4.png)
 
 
 - Booking 서비스 재배포 후 Pod에 CB 부착 확인
@@ -929,7 +936,7 @@ $ siege -c100 -t10S -v --content-type "application/json" 'http://booking:8080/bo
 
 - 예약 서비스에 리소스에 대한 사용량을 정의한다.
 
-<code>booking/kubernetes/deployment.yml</code>
+<code>rental/kubernetes/deployment.yml</code>
 
 ```yml
   resources:
@@ -944,13 +951,16 @@ $ siege -c100 -t10S -v --content-type "application/json" 'http://booking:8080/bo
 - 예약 서비스에 대한 replica 를 동적으로 늘려주도록 HPA 를 설정한다. 설정은 CPU 사용량이 15프로를 넘어서면 replica 를 10개까지 늘려준다:
 
 ```sh
-$ kubectl autoscale deploy booking --min=1 --max=10 --cpu-percent=15
+$ kubectl autoscale deploy rental --min=1 --max=10 --cpu-percent=15
 ```
 
-![image](https://user-images.githubusercontent.com/82795806/120987663-c51f3a00-c7b8-11eb-8cc3-59d725ca2f69.png)
+![image](https://user-images.githubusercontent.com/82795806/123220779-3e34c600-d509-11eb-82da-2b95b0ff8ccf.png)
 
+- Siege pod에 진입하여 워크로드를 걸어준다.
+```sh
+kubectl exec -it pod/siege -c siege -n wavve -- /bin/bash
+```
 
-- CB 에서 했던 방식대로 워크로드를 걸어준다.
 
 ```sh
 $ siege -c200 -t10S -v --content-type "application/json" 'http://booking:8080/bookings POST {"vaccineId":1, "vcName":"FIZER", "userId":5, "status":"BOOKED"}'
@@ -976,6 +986,7 @@ $ watch kubectl get all
 - siege 의 로그를 보아도 전체적인 성공률이 높아진 것을 확인 할 수 있다. 
 
 ![image](https://user-images.githubusercontent.com/82795806/120990490-93f43900-c7bb-11eb-9295-c3a0a8165ff6.png)
+
 
 ## Zero-Downtime deploy (Readiness Probe)
 
