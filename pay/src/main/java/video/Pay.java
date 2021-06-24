@@ -23,6 +23,7 @@ public class Pay {
 
         if(this.getPayStatus().matches("OK")){
             Paid paid = new Paid();
+            this.setPayStatus("BOOKED");
             BeanUtils.copyProperties(this, paid);
             paid.publishAfterCommit();
         }else{

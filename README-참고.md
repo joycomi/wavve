@@ -1,14 +1,24 @@
-# 개인과제(문혜영) Project
-## 비디오 예약 & 대여 관리
-![image](https://user-images.githubusercontent.com/82795806/123117533-c8831880-d47c-11eb-9bda-98d5a0424bee.png)
+# 3rd Team Project
+## 코로나 백신 접종 알리미
+![corona-1140x564](https://user-images.githubusercontent.com/2360083/121103166-39e68880-c83a-11eb-8849-4cd358293abd.png)
 
 ### Repositories
 
-- https://github.com/joycomi/wavve
+- **게이트웨이** - [https://github.com/dt-3team/gateway.git](https://github.com/dt-3team/gateway.git)
+
+- **백신 관리** - [https://github.com/dt-3team/vaccine.git](https://github.com/dt-3team/vaccine.git)
+
+- **예약 관리** - [https://github.com/dt-3team/booking.git](https://github.com/dt-3team/booking.git)
+
+- **접종 관리** - [https://github.com/dt-3team/injection.git](https://github.com/dt-3team/injection.git)
+
+- **My Page** - [https://github.com/dt-3team/mypage.git](https://github.com/dt-3team/mypage.git)
+
+- **Front End** - [https://github.com/dt-3team/frontend.git](https://github.com/dt-3team/frontend.git)
 
 *전체 소스 받기*
 ```
-git clone https://github.com/joycomi/wavve.git
+git clone --recurse-submodules https://github.com/dt-3team/anticorona.git
 ```
 
 ### Table of contents
@@ -17,6 +27,14 @@ git clone https://github.com/joycomi/wavve.git
   - [기능적 요구사항](#기능적-요구사항)
   - [비기능적 요구사항](#비기능적-요구사항)
 - [분석/설계](#분석설계)
+  - [AS-IS 조직 (Horizontally-Aligned)](#AS-IS-조직-(Horizontally-Aligned))
+  - [TO-BE 조직 (Vertically-Aligned)](#TO-BE-조직-(Vertically-Aligned))
+  - [Event 도출](#Event-도출)
+  - [부적격 이벤트 제거](#부적격-이벤트-제거)
+  - [액터, 커맨드 부착](#액터,-커맨드-부착)
+  - [어그리게잇으로 묶기](#어그리게잇으로-묶기)
+  - [바운디드 컨텍스트로 묶기](#바운디드-컨텍스트로-묶기)
+  - [폴리시 부착/이동 및 컨텍스트 매핑](#폴리시-부착/이동-및-컨텍스트-매핑)
   - [Event Storming 최종 결과](#Event-Storming-최종-결과)
   - [기능 요구사항 Coverage](#기능-요구사항-Coverage)
   - [헥사고날 아키텍처 다이어그램 도출](#헥사고날-아키텍처-다이어그램-도출)
@@ -41,159 +59,220 @@ git clone https://github.com/joycomi/wavve.git
 
 ## 기능적 요구사항
 
-* 관리자는 비디오 정보를 등록한다.
-* 고객은 비디오를 예약 할 수 있다.
-* 비디오 예약은 결제가 완료 되어야 할 수 있다.
-* 고객은 비디오 예약을 취소 할 수 있다.
-* 고객은 예약된 비디오를 대여, 반납 할 수 있다.
-* 비디오의 각 상태(등록,예약,예약취소, 대여, 반납)는 관리 된다.
-* 고객은 비디오 예약정보를 조회 확인 할 수 있다. 
+* 백신 관리자는 백신정보 및 재고를 등록한다.
+* 백신 관리자는 백신 재고를 추가한다.
+* 고객은 접종을 예약한다.
+* 고객은 접종 예약을 취소 할 수 있다.
+* 접종 예약수량은 백신 재고수량을 초과 할 수 없다.
+* 고객이 접종 완료 하면, 예약 수량과 재고 수량이 감소한다.
+* 고객이 방문하여 접종하면 접종 관리자에 의해 접종완료된다.
+* 고객은 예약정보를 확인 할 수 있다. 
 * 예약 서비스는 게이트웨이를 통해 고객과 통신한다.
 
 
 ## 비기능적 요구사항
 * 트랜잭션
-    * 비디오 예약은 결제가 완료 되어야 할 수 있다. (Sync 호출)
+    * 예약 수량은 재고 수량을 초과하여 예약 할 수 없다. (Sync 호출)
 * 장애격리
-    * 비디오 정보 등록 기능은 예약 기능이 수행 되지 않더라도 365일 24시간 받을 수 있어야 한다. Async (event-driven), Eventual Consistency
-    * 예약시스템이 과중 되면 예약을 잠시동안 받지 않고 잠시후에 하도록 유도한다. Circuit breaker, fallback
+    * 백신접종 기능이 수행되지 않더라도 백신예약은 365일 24시간 받을 수 있어야 한다. Async (event-driven), Eventual Consistency
+    * 예약시스템이 과중 되면 사용자를 잠시동안 받지 않고 예약을 잠시후에 하도록 유도한다. Circuit breaker, fallback
 * 성능
-    * 고객은 MyPage에서 비디오 예약정보 및 상태를 확인 할 수 있어야 한다. (CQRS)
-
-
+    * 고객은 MyPage에서 본인 예약 상태를 확인 할 수 있어야 한다. (CQRS)
+    
 # 분석/설계
 
 ## AS-IS 조직 (Horizontally-Aligned)
 ![Horizontally-Aligned](https://user-images.githubusercontent.com/2360083/119254418-278d0d80-bbf1-11eb-83d1-494ba83aeaf1.png)
 
 ## TO-BE 조직 (Vertically-Aligned)
-![image](https://user-images.githubusercontent.com/82795806/123185344-ad41f880-d4d0-11eb-9f2d-321bf3050b55.png)
+![Vertically-Aligned](https://user-images.githubusercontent.com/2360083/119254421-2eb41b80-bbf1-11eb-82fe-53c5dcd366f7.png)
 
-## Event Storming 최종 결과
-![image](https://user-images.githubusercontent.com/82795806/123125804-ce302c80-d483-11eb-831b-158a242aa465.png)
+## Event 도출
+![image](https://user-images.githubusercontent.com/61259324/120970337-43beac00-c7a6-11eb-87ec-1bccc37c0fb5.png)
+
+## 부적격 이벤트 제거
+![image](https://user-images.githubusercontent.com/61259324/120970404-5afd9980-c7a6-11eb-93a4-ec60cf3c4ea0.png)
+
+```
+- 이벤트를 식별하여 타임라인으로 배치하고 중복되거나 잘못된 도메인 이벤트들을 걸러내는 작업을 수행함
+- 현업이 사용하는 용어를 그대로 사용(Ubiquitous Language) 
+```
+## 액터, 커맨드 부착
+![image](https://user-images.githubusercontent.com/61259324/120970948-0d356100-c7a7-11eb-956f-faeb5f0d53a6.png)
+
+```
+- Event를 발생시키는 Command와 Command를 발생시키는주체, 담당자 또는 시스템을 식별함 
+- Command : 백신등록, 백신수량 추가, 접종 예약, 접종예약 취소, 접종, 체크 및 예약수량 변경
+- Actor : 백신관리자, 접종자, 접종관리자, 시스템
+```
+## 어그리게잇으로 묶기
+![image](https://user-images.githubusercontent.com/61259324/120971066-30f8a700-c7a7-11eb-9dfc-d282b5c23e65.png)
+
+```
+- 연관있는 도메인 이벤트들을 Aggregate 로 묶었음 
+- Aggregate : 백신정보, 예약정보, 접종정보
+```
+## 바운디드 컨텍스트로 묶기
+![image](https://user-images.githubusercontent.com/61259324/120972839-23dcb780-c7a9-11eb-92fc-4566835b88e2.png)
+
+
+## 폴리시 부착/이동 및 컨텍스트 매핑
+![image](https://user-images.githubusercontent.com/61259324/120973052-669e8f80-c7a9-11eb-9c5e-e5eed14c32e6.png)
+
 ```
 - Policy의 이동과 컨텍스트 매핑 (점선은 Pub/Sub, 실선은 Req/Res)
 ```
 
-![image](https://user-images.githubusercontent.com/82795806/123125987-fa4bad80-d483-11eb-8b13-57de2caa42d1.png)
+## Event Storming 최종 결과
+![image](https://user-images.githubusercontent.com/61259324/120962973-c130ef00-c79b-11eb-852f-0afc93b6e759.png)
+
+
+![image](https://user-images.githubusercontent.com/61259324/120963262-356b9280-c79c-11eb-94f0-2cd88bc66c5e.png)
 
 
 ## 기능 요구사항 Coverage
 
-![image](https://user-images.githubusercontent.com/82795806/123188689-6c011700-d4d7-11eb-8bb4-db081970bc32.png)
+![image](https://user-images.githubusercontent.com/61259324/120993819-df5c1680-c7be-11eb-86c0-0c0cc1655310.png)
 
-![image](https://user-images.githubusercontent.com/82795806/123188812-a36fc380-d4d7-11eb-81d5-a7770b97b9fc.png)
+![image](https://user-images.githubusercontent.com/61259324/120994060-1b8f7700-c7bf-11eb-8576-c9942300dcc2.png)
 
-![image](https://user-images.githubusercontent.com/82795806/123188843-b97d8400-d4d7-11eb-888f-b2f2e08c5f1c.png)
+![image](https://user-images.githubusercontent.com/61259324/120994206-3d88f980-c7bf-11eb-842b-73118d6e89ce.png)
 
 ## 헥사고날 아키텍처 다이어그램 도출
-![image](https://user-images.githubusercontent.com/82795806/123126199-25360180-d484-11eb-8a50-bf462e509a20.png)
-
+![image](https://user-images.githubusercontent.com/61259324/120964341-27b70c80-c79e-11eb-8573-015794496e99.png)
 
 ## System Architecture
-![image](https://user-images.githubusercontent.com/82795806/123126300-3bdc5880-d484-11eb-87bd-22a8203a1782.png)
+![image](https://user-images.githubusercontent.com/61259324/120966586-626e7400-c7a1-11eb-9d91-0960a88e675d.png)
+
+
+![image](https://user-images.githubusercontent.com/61259324/120966961-e4f73380-c7a1-11eb-8064-32f5363703c3.png)
 
 # 구현
 분석/설계 단계에서 도출된 헥사고날 아키텍처에 따라,구현한 각 서비스를 로컬에서 실행하는 방법은 아래와 같다
 (각자의 포트넘버는 8081 ~ 8084, 8088 이다)
 ```shell
-cd video
+cd vaccine
 mvn spring-boot:run
 
-cd rental
-mvn spring-boot:run 
-
-cd pay
+cd booking
 mvn spring-boot:run 
 
 cd mypage 
+mvn spring-boot:run 
+
+cd injection 
 mvn spring-boot:run
 
 cd gateway
 mvn spring-boot:run 
 ```
-## DDD(Domain-Driven-Design)의 적용 (이하작성필요)
+## DDD(Domain-Driven-Design)의 적용
 msaez.io 를 통해 구현한 Aggregate 단위로 Entity 를 선언 후, 구현을 진행하였다.
 Entity Pattern 과 Repository Pattern을 적용하기 위해 Spring Data REST 의 RestRepository 를 적용하였다.
 
-rental 서비스의 rental.java 구현
+Booking 서비스의 Booking.java
 
 ```java
 
-...
-package video;
+package anticorona;
 
 import javax.persistence.*;
 import org.springframework.beans.BeanUtils;
+import org.springframework.hateoas.ResourceSupport;
+
+import java.util.List;
+import java.util.Date;
 
 @Entity
-@Table(name="Rental_table")
-public class Rental {
+@Table(name="Booking")
+public class Booking extends ResourceSupport {
 
     @Id
     @GeneratedValue(strategy=GenerationType.AUTO)
-    private Integer rentId;
-    private Integer videoId;
-    private String videoTitle;
-    private Integer rentPrice;
+    private Long bookingId;
+    private Long vaccineId;
+    private String vcName;
+    private Long userId;
     private String status;
-    private String memId;
+
+    @PrePersist
+    public void onPrePersist(){
+        this.setStatus("BOOKED");
+    }
 
     @PostPersist
-    public void onPostPersist(){
-        //예약&결제정보 전달
-        VideoBooked videoBooked = new VideoBooked();
-        BeanUtils.copyProperties(this, videoBooked);
-        videoBooked.publishAfterCommit();
-
-        //Pay서비스로 예약정보 전달
-        video.external.Pay pay = new video.external.Pay();
-        pay.setRentId(this.getRentId());
-        pay.setPrice(this.getRentPrice());
-        pay.setPayStatus(this.getStatus()); //OK, NotOK
-        pay.setVideoId(this.getVideoId());
-
-        // mappings goes here
-         RentalApplication.applicationContext.getBean(video.external.PayService.class)
-            .payment(pay);
-
-        }
-
-    @PostUpdate
-    public void onPostUpdate(){
-
-        // 예약취소, 대여, 반납 처리 시 이벤트 발생
-        if("CANCEL".equals(this.getStatus())){
-            BookingCancelled bookingCancelled = new BookingCancelled();
-            this.setStatus("CANCELLED");
-            BeanUtils.copyProperties(this, bookingCancelled);
-            bookingCancelled.publishAfterCommit();
-
-        }else if("RENT".equals(this.getStatus())){
-            VideoRented videoRented = new VideoRented();
-            this.setStatus("RENTED");
-            BeanUtils.copyProperties(this, videoRented);
-            videoRented.publishAfterCommit();
-        
-        }else if("RETURN".equals(this.getStatus())){
-            VideoReturned videoReturned = new VideoReturned();
-            this.setStatus("RETURNED");
-            BeanUtils.copyProperties(this, videoReturned);
-            videoReturned.publishAfterCommit();
+    public void onPostPersist() throws Exception {
+        if(BookingApplication.applicationContext.getBean(anticorona.external.VaccineService.class)
+            .checkAndBookStock(this.vaccineId)){
+                Booked booked = new Booked();
+                BeanUtils.copyProperties(this, booked);
+                booked.publishAfterCommit();
+            }
+        else{
+            throw new Exception("Out of Stock Exception Raised.");
         }
 
     }
 
-... 이하 생략 ...
+    @PreUpdate
+    @PostRemove
+    public void onCancelled(){
+        if("BOOKING_CANCELLED".equals(this.status)){
+            BookingCancelled bookingCancelled = new BookingCancelled();
+            BeanUtils.copyProperties(this, bookingCancelled);
+            bookingCancelled.publishAfterCommit();
+        }
+    }
+
+
+    public Long getBookingId() {
+        return bookingId;
+    }
+
+    public void setBookingId(Long bookingId) {
+        this.bookingId = bookingId;
+    }
+    public Long getVaccineId() {
+        return vaccineId;
+    }
+
+    public void setVaccineId(Long vaccineId) {
+        this.vaccineId = vaccineId;
+    }
+    public String getVcName() {
+        return vcName;
+    }
+
+    public void setVcName(String vcName) {
+        this.vcName = vcName;
+    }
+    public Long getUserId() {
+        return userId;
+    }
+
+    public void setUserId(Long userId) {
+        this.userId = userId;
+    }
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
+    }
+
 }
 ```
 
- rental 서비스의 PolicyHandler.java 구현
+ Booking 서비스의 PolicyHandler.java
 
 ```java
-package video;
+package anticorona;
 
-import video.config.kafka.KafkaProcessor;
+import anticorona.config.kafka.KafkaProcessor;
+
+import java.util.Optional;
+
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -201,54 +280,51 @@ import org.springframework.cloud.stream.annotation.StreamListener;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.stereotype.Service;
 
-import java.util.Optional;
-
 @Service
 public class PolicyHandler{
-    @Autowired RentalRepository rentalRepository;
+    
+    @Autowired BookingRepository bookingRepository;
 
     @StreamListener(KafkaProcessor.INPUT)
-    public void wheneverStatusModified_ModifyStatus(@Payload StatusModified statusModified){
+    public void wheneverCompleted_UpdateStatus(@Payload Completed completed){
 
-        if(!statusModified.validate()) return;
+        if(!completed.validate()) return;
 
-        Iterable<Rental> rentals= rentalRepository.findAll();
-        
-        for (Rental rental : rentals) {
-            if(rental.getVideoId().equals(statusModified.getVideoId()))
-            {
-                rental.setStatus(statusModified.getStatus());
-                rentalRepository.save(rental);
-
-                break;
-            }
+        System.out.println("\n\n##### listener UpdateStatus : " + completed.toJson() + "\n\n");
+        Optional<Booking> booking = bookingRepository.findById(completed.getBookingId());
+        if(booking.isPresent()){
+            Booking bookingValue = booking.get();
+            bookingValue.setStatus("INJECTION_COMPLETED");
+            bookingRepository.save(bookingValue);
         }
-           
+            
     }
+
 
     @StreamListener(KafkaProcessor.INPUT)
     public void whatever(@Payload String eventString){}
 
+
 }
 ```
 
- rental 서비스의 BookingRepository.java
+ Booking 서비스의 BookingRepository.java
 
 
 ```java
-package video;
+package anticorona;
 
 import org.springframework.data.repository.PagingAndSortingRepository;
 import org.springframework.data.rest.core.annotation.RepositoryRestResource;
 
-@RepositoryRestResource(collectionResourceRel="rentals", path="rentals")
-public interface RentalRepository extends PagingAndSortingRepository<Rental, Integer>{
+@RepositoryRestResource(collectionResourceRel="bookings", path="bookings")
+public interface BookingRepository extends PagingAndSortingRepository<Booking, Long>{
+
 
 }
 ```
 
 DDD 적용 후 REST API의 테스트를 통하여 정상적으로 동작하는 것을 확인할 수 있었다.
-
 ## Gateway 적용
 API GateWay를 통하여 마이크로 서비스들의 진입점을 통일할 수 있다. 
 다음과 같이 GateWay를 적용하였다.
@@ -256,30 +332,28 @@ API GateWay를 통하여 마이크로 서비스들의 진입점을 통일할 수
 ```yaml
 server:
   port: 8088
-
 ---
-
 spring:
   profiles: default
   cloud:
     gateway:
       routes:
-        - id: video
+        - id: vaccine
           uri: http://localhost:8081
           predicates:
-            - Path=/videos/** 
-        - id: rental
+            - Path=/vaccines/** 
+        - id: booking
           uri: http://localhost:8082
           predicates:
-            - Path=/rentals/** 
-        - id: pay
+            - Path=/bookings/** 
+        - id: mypage
           uri: http://localhost:8083
           predicates:
-            - Path=/pays/**,/refunds/** 
-        - id: mypage
+            - Path= /mypages/**
+        - id: injection
           uri: http://localhost:8084
           predicates:
-            - Path= /mypages/**
+            - Path=/injections/**,/cancellations/** 
       globalcors:
         corsConfigurations:
           '[/**]':
@@ -290,8 +364,6 @@ spring:
             allowedHeaders:
               - "*"
             allowCredentials: true
-
-
 ---
 
 spring:
@@ -299,22 +371,22 @@ spring:
   cloud:
     gateway:
       routes:
-        - id: video
-          uri: http://video:8080
+        - id: vaccine
+          uri: http://vaccine:8080
           predicates:
-            - Path=/videos/** 
-        - id: rental
-          uri: http://rental:8080
+            - Path=/vaccines/** 
+        - id: booking
+          uri: http://booking:8080
           predicates:
-            - Path=/rentals/** 
-        - id: pay
-          uri: http://pay:8080
-          predicates:
-            - Path=/pays/**,/refunds/** 
+            - Path=/bookings/** 
         - id: mypage
           uri: http://mypage:8080
           predicates:
             - Path= /mypages/**
+        - id: injection
+          uri: http://injection:8080
+          predicates:
+            - Path=/injections/**,/cancellations/** 
       globalcors:
         corsConfigurations:
           '[/**]':
@@ -327,16 +399,15 @@ spring:
             allowCredentials: true
 
 server:
-  port: 8080
+  port: 8080 
 ```  
 mypage 서비스의 GateWay 적용
 
-![image](https://user-images.githubusercontent.com/82795806/123207410-4c2e1b00-d4f8-11eb-9a3b-e4d00cc2bc3d.png)
 
+![image](https://user-images.githubusercontent.com/82795860/120988904-f0eeef80-c7b9-11eb-92e3-ed97ecc2b047.png)
 
 ## CQRS
-Materialized View 를 구현하여, 타 마이크로서비스의 데이터 원본에 접근없이(Composite 서비스나 조인SQL 등 없이) 도 내 서비스의 화면 구성과 잦은 조회가 가능하게 구현하였다
-
+Materialized View 를 구현하여, 타 마이크로서비스의 데이터 원본에 접근없이(Composite 서비스나 조인SQL 등 없이) 도 내 서비스의 화면 구성과 잦은 조회가 가능하게 구현해 두었다.
 본 프로젝트에서 View 역할은 mypage 서비스가 수행한다.
 
 예약(Booked) 실행 후 myPage 화면
@@ -348,14 +419,14 @@ Materialized View 를 구현하여, 타 마이크로서비스의 데이터 원�
 ![image](https://user-images.githubusercontent.com/82795860/121006311-bb530200-c7cb-11eb-9d85-a7b22d1a2729.png)
   
 ## 폴리글랏 퍼시스턴스
-mypage 서비스의 DB와 video/rental/pay 서비스의 DB를 다른 DB를 사용하여 MSA간 서로 다른 종류의 DB간에도 문제 없이 동작하여 다형성을 만족하는지 확인하였다.
+mypage 서비스의 DB와 Booking/injection/vaccine 서비스의 DB를 다른 DB를 사용하여 MSA간 서로 다른 종류의 DB간에도 문제 없이 동작하여 다형성을 만족하는지 확인하였다.
 (폴리글랏을 만족)
 
 |서비스|DB|pom.xml|
 | :--: | :--: | :--: |
-|video| H2 |![image](https://user-images.githubusercontent.com/2360083/121104579-4f10e680-c83d-11eb-8cf3-002c3d7ff8dc.png)|
-|rental| H2 |![image](https://user-images.githubusercontent.com/2360083/121104579-4f10e680-c83d-11eb-8cf3-002c3d7ff8dc.png)|
-|pay/refund| H2 |![image](https://user-images.githubusercontent.com/2360083/121104579-4f10e680-c83d-11eb-8cf3-002c3d7ff8dc.png)|
+|vaccine| H2 |![image](https://user-images.githubusercontent.com/2360083/121104579-4f10e680-c83d-11eb-8cf3-002c3d7ff8dc.png)|
+|booking| H2 |![image](https://user-images.githubusercontent.com/2360083/121104579-4f10e680-c83d-11eb-8cf3-002c3d7ff8dc.png)|
+|injection| H2 |![image](https://user-images.githubusercontent.com/2360083/121104579-4f10e680-c83d-11eb-8cf3-002c3d7ff8dc.png)|
 |mypage| HSQL |![image](https://user-images.githubusercontent.com/2360083/120982836-1842be00-c7b4-11eb-91de-ab01170133fd.png)|
 
 ## 동기식 호출과 Fallback 처리
@@ -460,33 +531,9 @@ Vaccine 서비스 내 Booking 서비스 Feign Client 요청 대상
 
   
 # 운영
-## Kafka 설치
-```sh
--- 버전 확인 (3.xx 버전인지 확인)
-helm version
-
--- helm 의 설치관리자를 위한 시스템 사용자 생성
-kubectl --namespace kube-system create sa tiller
-kubectl create clusterrolebinding tiller --clusterrole cluster-admin --serviceaccount=kube-system:tiller
-
--- kafka 설치
-helm repo add incubator https://charts.helm.sh/incubator
-helm repo update
-kubectl create ns kafka
-helm install my-kafka --namespace kafka incubator/kafka
-
-* (kafka 설치 후) kafka 실행 결과 조회
-kubectl get all -n kafka
-``` 
-![image](https://user-images.githubusercontent.com/82795806/123200552-ec317780-d4eb-11eb-9627-21388a708745.png)
-
-# Httpie 설치
-pip install --upgrade httpie
-
-
+  
 ## Deploy/ Pipeline
 각 구현체들은 각자의 source repository 에 구성되었고, 사용한 CI/CD 플랫폼은 Azure를 사용하였으며, pipeline build script 는 각 프로젝트 폴더 이하에 cloudbuild.yml 에 포함되었다.
-
 
 - git에서 소스 가져오기
 
@@ -497,19 +544,24 @@ git clone --recurse-submodules https://github.com/dt-3team/anticorona.git
 - Build 하기
 
 ```bash
-cd ~/wavve/gateway
+cd ~/anticorona
+cd gateway
 mvn package
 
-cd ~/wavve/video
+cd ..
+cd booking
 mvn package
 
-cd ~/wavve/rental
+cd ..
+cd vaccine
 mvn package
 
-cd ~/wavve/pay
+cd ..
+cd injection
 mvn package
 
-cd ~/wavve/mypage
+cd ..
+cd mypage
 mvn package
 ```
 
@@ -517,50 +569,52 @@ mvn package
 
 ```sh
 -- 기본 namespace 설정
-kubectl config set-context --current --namespace=wavve
+kubectl config set-context --current --namespace=anticorona
 
 -- namespace 생성
-kubectl create ns wavve
+kubectl create ns anticorona
 
-cd ~/wavve/gateway
-az acr build --registry wavve --image wavve.azurecr.io/gateway:latest .
-
-cd kubernetes
-kubectl apply -f deployment.yml
-kubectl apply -f service.yaml
-
-cd ~/wavve/video
-az acr build --registry wavve --image wavve.azurecr.io/video:latest .
+cd ~/anticorona/gateway
+az acr build --registry skccanticorona --image skccanticorona.azurecr.io/gateway:latest .
 
 cd kubernetes
 kubectl apply -f deployment.yml
 kubectl apply -f service.yaml
 
-cd ~/wavve/rental
-az acr build --registry wavve --image wavve.azurecr.io/rental:latest .
+cd ..
+cd booking
+az acr build --registry skccanticorona --image skccanticorona.azurecr.io/booking:latest .
 
 cd kubernetes
-kubectl apply -f configmap.yml #configmap 추가
 kubectl apply -f deployment.yml
 kubectl apply -f service.yaml
 
-cd ~/wavve/pay
-az acr build --registry wavve --image wavve.azurecr.io/pay:latest .
+cd ..
+cd vaccine
+az acr build --registry skccanticorona --image skccanticorona.azurecr.io/vaccine:latest .
 
 cd kubernetes
-kubectl apply -f pay-pvc.yml #pvc 추가
 kubectl apply -f deployment.yml
 kubectl apply -f service.yaml
 
-cd ~/wavve/mypage
-az acr build --registry wavve --image wavve.azurecr.io/mypage:latest .
+cd ..
+cd injection
+az acr build --registry skccanticorona --image skccanticorona.azurecr.io/injection:latest .
+
+cd kubernetes
+kubectl apply -f deployment.yml
+kubectl apply -f service.yaml
+
+cd ..
+cd mypage
+az acr build --registry skccanticorona --image skccanticorona.azurecr.io/mypage:latest .
 
 cd kubernetes
 kubectl apply -f deployment.yml
 kubectl apply -f service.yaml
 ```
 
-- wavve/gateway/kubernetes/deployment.yml 파일 
+- anticorona/gateway/kubernetes/deployment.yml 파일 
 
 ```yml
 apiVersion: apps/v1
@@ -657,9 +711,7 @@ spec:
     app: booking
 ```	  
 
-- deploy 완료
-
-![image](https://user-images.githubusercontent.com/82795806/123196422-da000b00-d4e4-11eb-818d-be66dffac811.png)
+- deploy 완료(istio 부착기준)
 
 ![image](https://user-images.githubusercontent.com/82795806/120998532-24824780-c7c3-11eb-8f01-d73860d68426.png)
 
@@ -668,103 +720,48 @@ spec:
 ## Config Map
 
 - 변경 가능성이 있는 설정을 ConfigMap을 사용하여 관리  
-  - rental 서비스에서 바라보는 pay 서비스 url 일부분을 ConfigMap 사용하여 구현​  
+  - booking 서비스에서 바라보는 vaccine 서비스 url 일부분을 ConfigMap 사용하여 구현​  
 
-- rental > <code>PayService.java</code>에 추가(rental/src/main/java/external/PayService.java)
-```java
-@FeignClient(name="pay", url="${api.pay.url}")
-public interface PayService {
+- in booking src (booking/src/main/java/anticorona/external/VaccineService.java)
+    ![configmap-in src](https://user-images.githubusercontent.com/18115456/120984025-35c45780-c7b5-11eb-8181-bfed9a943e67.png)
 
-    @RequestMapping(method= RequestMethod.POST, path="/pays")
-    public void payment(@RequestBody Pay pay);
+- booking application.yml (booking/src/main/resources/application.yml)​  
+    ![configmap-application yml](https://user-images.githubusercontent.com/18115456/120984136-5096cc00-c7b5-11eb-8745-78cb754c0e1b.PNG)
 
-}
-```
-
-- rental > <code>application.yml</code>에 추가 (rental/src/main/resources/application.yml)​  
-```yml
-api:
-  pay:
-    url: ${pay-url}
-```
-
-- rental > <code>deployment.yml</code>에 추가 (rental/kubernetes/deployment.yml)
-```yml
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: rental
-  template:
-    metadata:
-      labels:
-        app: rental
-    spec:
-      containers:
-        - name: rental
-          image: wavve.azurecr.io/rental:latest
-          ports:
-            - containerPort: 8080
-          env: # configmap 맵핑 추가
-            - name: pay-url
-              valueFrom:
-                configMapKeyRef:
-                  name: apiurl
-                  key: url
-...
-```
+- booking deploy yml (booking/kubernetes/deployment.yml)  
+    ![configmap-deploy yml](https://user-images.githubusercontent.com/18115456/120984461-a2d7ed00-c7b5-11eb-9f2f-6b09ad0ba9cf.png)
 
 - configmap 생성 후 조회
 
-```sh
-cd ~/wavve/rental/kubernetes
-kubectl apply -f configmap.yml -n wavve
-kubectl get cm apiurl -n wavve
-```
-![image](https://user-images.githubusercontent.com/82795806/123197833-1896c500-d4e7-11eb-8e06-0be674f14a68.png)
+    ```sh
+    kubectl create configmap apiurl --from-literal=url=vaccine -n anticorona
+    ```
 
-- <code>configmap.yml</code> 파일 (rental\kubernetes\configmap.yml)
-
-```yml
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: apiurl
-  namespace: wavve
-data:
-  url: http://pay:8080
-```
+    ![configmap-configmap조회](https://user-images.githubusercontent.com/18115456/120985042-2eea1480-c7b6-11eb-9dbc-e73d696c003b.PNG)
 
 - configmap 삭제 후, 에러 확인  
 
-```sh
-kubectl delete configmap apiurl -n wavve
+    ```sh
+    kubectl delete configmap apiurl
+    ```
 
-kubectl delete -f deployment.yml
-kubectl apply -f deployment.yml
-```
-![image](https://user-images.githubusercontent.com/82795806/123198552-44ff1100-d4e8-11eb-93e5-c1ef0695fdb6.png)
+    ![configmap-오류1](https://user-images.githubusercontent.com/18115456/120985205-5b9e2c00-c7b6-11eb-8ede-df74eff7f344.png)
 
-
-```sh
-kubectl describe pod/rental-5ccc5f69cc-sn9ks -n wavve
-```
-![image](https://user-images.githubusercontent.com/82795806/123198687-85f72580-d4e8-11eb-94c6-82e76bda6b9c.png)
-
+    ![configmap-오류2](https://user-images.githubusercontent.com/18115456/120985213-5ccf5900-c7b6-11eb-9c06-5402942329a3.png)  
 
 ## Persistence Volume
-----------
+  
 PVC 생성 파일
 
-<code>pay-pvc.yml</code> (pay\kubernetes\pay-pvc.yml)
+<code>injection-pvc.yml</code>
 - AccessModes: **ReadWriteMany**
 - storeageClass: **azurefile**
 ```yml
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: pay-disk
-  namespace: wavve
+  name: injection-disk
+  namespace: anticorona
 spec:
   accessModes:
   - ReadWriteMany
@@ -774,7 +771,7 @@ spec:
       storage: 1Gi
 ```
 
-<code>deployment.yml</code> (pay\kubernetes\deployment.yml)
+<code>deployment.yml</code>
 
 - Container에 Volumn Mount
 
@@ -782,37 +779,34 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: pay
-  namespace: wavve
+  name: injection
+  namespace: anticorona
   labels:
-    app: pay
+    app: injection
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: pay
+      app: injection
   template:
     metadata:
       labels:
-        app: pay
+        app: injection
     spec:
       containers:
-        - name: pay
-          image: wavve.azurecr.io/pay:latest
-          ports:
-            - containerPort: 8080
-          ...
-          volumeMounts: # pvc 설정 추가1 #
+        - name: injection
+          ... #아래 옵션 추가#
+          volumeMounts:
             - name: volume
               mountPath: "/mnt/azure"
           ...
-      volumes: # pvc 설정 추가2 #
+      volumes:
       - name: volume
         persistentVolumeClaim:
-          claimName: pay-disk
+          claimName: injection-disk
 ```
 
-<code>application.yml</code> (pay\src\main\resources\application.yml)
+<code>application.yml</code>
 - profile: **docker**
 - logging.file: PVC Mount 경로
 <code>application.yml</code>
@@ -825,29 +819,18 @@ spring:
 logging:
   level:
     root: info
-  file: /mnt/azure/logs/pay.log
-log:
-  refund:
-    path: /mnt/azure/
-    directory: logs
-    file: refunded.log
+  file: /mnt/azure/logs/injection.log  
 ```
 
 마운트 경로에 logging file 생성 확인
 
 ```sh
-$ kubectl exec -it pod/pay-7df9779d8f-vk4q9 -n wavve -- /bin/sh
+$ kubectl exec -it injection -n anticorona -- /bin/sh
 $ cd /mnt/azure/logs
-$ tail -n 20 -f refunded.log
-$ tail -n 20 -f pay.log
+$ tail -n 20 -f injection.log
 ```
-![image](https://user-images.githubusercontent.com/82795806/123204703-9660cd80-d4f3-11eb-8682-0687962e31f9.png)
 
-![image](https://user-images.githubusercontent.com/82795806/123204736-a4165300-d4f3-11eb-8b53-ed050b288876.png)
-
-![image](https://user-images.githubusercontent.com/82795806/123204760-b09aab80-d4f3-11eb-89bd-2f1192be4b05.png)
-
-
+<img src="https://user-images.githubusercontent.com/2360083/121015318-d296ed00-c7d5-11eb-90ad-679f6513905d.png" width="100%" />
 
 ## Circuit Breaker
 

@@ -36,7 +36,7 @@ spec:
             timeoutSeconds: 2
             periodSeconds: 5
             failureThreshold: 5
-          volumeMounts:
+          volumeMounts: # pvc 설정 추가1 #
             - name: volume
               mountPath: "/mnt/azure"
           resources:
@@ -46,7 +46,7 @@ spec:
             limits:
               memory: "500Mi"
               cpu: "500m"
-      volumes:
+      volumes: # pvc 설정 추가2 #
       - name: volume
         persistentVolumeClaim:
           claimName: pay-disk

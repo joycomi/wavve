@@ -96,5 +96,42 @@ public class MypageViewHandler {
             e.printStackTrace();
         }
     }
+    @StreamListener(KafkaProcessor.INPUT)
+    public void whenPaid_then_UPDATE_4(@Payload Paid paid) {
+        try {
+            if (!paid.validate()) return;
+                // view 객체 조회
+            Optional<Mypage> mypageOptional = mypageRepository.findByRentId(paid.getRentId());
 
+            if( mypageOptional.isPresent()) {
+                 Mypage mypage = mypageOptional.get();
+            // view 객체에 이벤트의 eventDirectValue 를 set 함
+                 mypage.setStatus(paid.getPayStatus());
+                // view 레파지 토리에 save
+                 mypageRepository.save(mypage);
+                }
+
+
+        }catch (Exception e){
+            e.printStackTrace();
+        }
+    }
+    @StreamListener(KafkaProcessor.INPUT)
+    public void whenPaid_then_UPDATE_4(@Payload VideoReturned videoReturned) {
+        try {
+            if (!videoReturned.validate()) return;
+                // view 객체 조회
+            Optional<Mypage> mypageOptional = mypageRepository.findById(videoReturned.getRentId());
+            if( mypageOptional.isPresent()) {
+                Mypage mypage = mypageOptional.get();
+                // view 객체에 이벤트의 eventDirectValue 를 set 함
+                    mypage.setStatus(videoReturned.getStatus());
+                // view 레파지 토리에 save
+                mypageRepository.save(mypage);
+            }
+            
+        }catch (Exception e){
+            e.printStackTrace();
+        }
+    }
 }

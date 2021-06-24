@@ -2,8 +2,6 @@ package video;
 
 import javax.persistence.*;
 import org.springframework.beans.BeanUtils;
-import java.util.List;
-import java.util.Date;
 
 @Entity
 @Table(name="Rental_table")
@@ -26,16 +24,13 @@ public class Rental {
         BeanUtils.copyProperties(this, videoBooked);
         videoBooked.publishAfterCommit();
 
-        //Following code causes dependency to external APIs
-        // it is NOT A GOOD PRACTICE. instead, Event-Policy mapping is recommended.
-
+        //Pay서비스로 예약정보 전달
         video.external.Pay pay = new video.external.Pay();
         pay.setRentId(this.getRentId());
         pay.setPrice(this.getRentPrice());
         pay.setPayStatus(this.getStatus()); //OK, NotOK
         pay.setVideoId(this.getVideoId());
 
-        //boolean rslt = false;
         // mappings goes here
          RentalApplication.applicationContext.getBean(video.external.PayService.class)
             .payment(pay);
@@ -111,8 +106,4 @@ public class Rental {
     public void setMemId(String memId) {
         this.memId = memId;
     }
-
-
-
-
 }
