@@ -1,1 +1,1 @@
-{"eventType":"Refunded","timestamp":"20210623011644","payId":1,"price":1000,"payStatus":"CANCELLED","rentId":9,"videoId":10}
+{"eventType":"Refunded","timestamp":"20210625120140","payId":1,"price":1000,"payStatus":"Refunded","rentId":1,"videoId":1}

@@ -10,14 +10,16 @@ public class Rental {
     @Id
     @GeneratedValue(strategy=GenerationType.AUTO)
     private Integer rentId;
+    private Integer rentPrice;
+    private String payStatus;//--add
+
     private Integer videoId;
     private String videoTitle;
-    private Integer rentPrice;
     private String status;
     private String memId;
 
     @PostPersist
-    public void onPostPersist(){
+    public void onPostPersist() throws Exception{
 
         //부하테스트 시간끌기
         try {
@@ -27,25 +29,22 @@ public class Rental {
             e.printStackTrace();
         }
 
-        //예약&결제정보 전달
-        VideoBooked videoBooked = new VideoBooked();
-        BeanUtils.copyProperties(this, videoBooked);
-        videoBooked.publishAfterCommit();
-
         //Pay서비스로 예약정보 전달
         video.external.Pay pay = new video.external.Pay();
         pay.setRentId(this.getRentId());
         pay.setPrice(this.getRentPrice());
-        pay.setPayStatus(this.getStatus()); //OK, NotOK
-        pay.setVideoId(this.getVideoId());
-
-        // mappings goes here
-         RentalApplication.applicationContext.getBean(video.external.PayService.class)
+        pay.setPayStatus(this.getPayStatus()); //OK, NotOK
+        pay.setVideoId(this.getVideoId());  //add
+        pay.setVideoTitle(this.getVideoTitle());
+        pay.setMemId(this.getMemId());
+        
+        RentalApplication.applicationContext.getBean(video.external.PayService.class)
             .payment(pay);
 
         }
 
     @PostUpdate
+    @PreUpdate
     public void onPostUpdate(){
         System.out.println("\n\n##### listener PreUpdate(Rental) : " + this.getRentId().toString()+": "+this.getStatus().toString() + "\n\n");
 
@@ -53,6 +52,7 @@ public class Rental {
         if("CANCEL".equals(this.getStatus())){
             BookingCancelled bookingCancelled = new BookingCancelled();
             this.setStatus("CANCELLED");
+            this.setPayStatus("Refunded");
             BeanUtils.copyProperties(this, bookingCancelled);
             bookingCancelled.publishAfterCommit();
 
@@ -106,7 +106,7 @@ public class Rental {
 
     public void setStatus(String status) {
         this.status = status;
-    }
+    }    
     public String getMemId() {
         return memId;
     }
@@ -114,4 +114,13 @@ public class Rental {
     public void setMemId(String memId) {
         this.memId = memId;
     }
+    //--add
+    public String getPayStatus() {
+        return payStatus;
+    }
+
+    public void setPayStatus(String payStatus) {
+        this.payStatus = payStatus;
+    }
+
 }

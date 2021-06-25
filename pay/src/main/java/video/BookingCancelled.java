@@ -8,6 +8,7 @@ public class BookingCancelled extends AbstractEvent {
     private Integer rentPrice;
     private String status;
     private String memId;
+    private String payStatus; //add
 
     public Integer getRentId() {
         return rentId;
@@ -50,5 +51,13 @@ public class BookingCancelled extends AbstractEvent {
 
     public void setMemId(String memId) {
         this.memId = memId;
+    }
+    //add
+    public String getPayStatus() {
+        return payStatus;
+    }
+
+    public void setPayStatus(String payStatus) {
+        this.payStatus = payStatus;
     }
 }

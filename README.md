@@ -17,6 +17,8 @@ git clone https://github.com/joycomi/wavve.git
   - [기능적 요구사항](#기능적-요구사항)
   - [비기능적 요구사항](#비기능적-요구사항)
 - [분석/설계](#분석설계)
+  - [AS-IS 조직 (Horizontally-Aligned)](#AS-IS-조직-(Horizontally-Aligned))
+  - [TO-BE 조직 (Vertically-Aligned)](#TO-BE-조직-(Vertically-Aligned))
   - [Event Storming 최종 결과](#Event-Storming-최종-결과)
   - [기능 요구사항 Coverage](#기능-요구사항-Coverage)
   - [헥사고날 아키텍처 다이어그램 도출](#헥사고날-아키텍처-다이어그램-도출)
@@ -48,7 +50,7 @@ git clone https://github.com/joycomi/wavve.git
 * 고객은 예약된 비디오를 대여, 반납 할 수 있다.
 * 비디오의 각 상태(등록,예약,예약취소, 대여, 반납)는 관리 된다.
 * 고객은 비디오 예약정보를 조회 확인 할 수 있다. 
-* 예약 서비스는 게이트웨이를 통해 고객과 통신한다.
+* 예약대여 서비스는 게이트웨이를 통해 고객과 통신한다.
 
 
 ## 비기능적 요구사항
@@ -56,7 +58,7 @@ git clone https://github.com/joycomi/wavve.git
     * 비디오 예약은 결제가 완료 되어야 할 수 있다. (Sync 호출)
 * 장애격리
     * 비디오 정보 등록 기능은 예약 기능이 수행 되지 않더라도 365일 24시간 받을 수 있어야 한다. Async (event-driven), Eventual Consistency
-    * 예약시스템이 과중 되면 예약을 잠시동안 받지 않고 잠시후에 하도록 유도한다. Circuit breaker, fallback
+    * 예약대여 시스템이 과중 되면 예약을 잠시동안 받지 않고 잠시후에 하도록 유도한다. Circuit breaker, fallback
 * 성능
     * 고객은 MyPage에서 비디오 예약정보 및 상태를 확인 할 수 있어야 한다. (CQRS)
 
@@ -156,7 +158,6 @@ public class Rental {
         // mappings goes here
          RentalApplication.applicationContext.getBean(video.external.PayService.class)
             .payment(pay);
-
         }
 
     @PostUpdate
@@ -252,9 +253,7 @@ API GateWay를 통하여 마이크로 서비스들의 진입점을 통일할 수
 ```yaml
 server:
   port: 8088
-
 ---
-
 spring:
   profiles: default
   cloud:
@@ -286,10 +285,7 @@ spring:
             allowedHeaders:
               - "*"
             allowCredentials: true
-
-
 ---
-
 spring:
   profiles: docker
   cloud:
@@ -321,7 +317,6 @@ spring:
             allowedHeaders:
               - "*"
             allowCredentials: true
-
 server:
   port: 8080
 ```  
@@ -329,7 +324,7 @@ server:
 ![image](https://user-images.githubusercontent.com/82795806/123214470-3887b200-d502-11eb-98f2-3aa8b4568a8f.png)
 
 ## CQRS
-Materialized View 를 구현하여, 타 마이크로서비스의 데이터 원본에 접근없이(Composite 서비스나 조인SQL 등 없이) 도 내 서비스의 화면 구성과 잦은 조회가 가능하게 구현하였다
+Materialized View 를 구현하여, 타 마이크로서비스의 데이터 원본에 접근없이(Composite 서비스나 조인SQL 등 없이) 도 내 서비스의 화면 구성과 잦은 조회가 가능하게 구현하였다.
 
 본 프로젝트에서 View 역할은 mypage 서비스가 수행한다.
 
@@ -349,8 +344,7 @@ mypage 서비스의 DB와 video/rental/pay 서비스의 DB를 다른 DB를 사�
 
 
 ## 동기식 호출과 Fallback 처리
-분석단계에서의 조건 중 하나로  접종 예약 수량은 백신 재고수량을 초과 할 수 없으며
-예약대여(rental)->(pay) 간의 호출은 동기식 일관성을 유지하는 트랜잭션으로 처리하기로 하였다. 
+분석단계에서의 조건 중 하나로  예약대여 시 정상 결제가 되지 않으면 예약이 불가능한 조건을 예약대여(rental)->(pay) 간의 동기 호출을 통해 일관성을 유지하는 트랜잭션으로 처리하기로 하였다. 
 호출 프로토콜은 Rest Repository 에 의해 노출되어있는 REST 서비스를 FeignClient 를 이용하여 호출하도록 한다.
 
 -- rental 서비스 내 external.PayService

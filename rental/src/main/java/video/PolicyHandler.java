@@ -24,7 +24,8 @@ public class PolicyHandler{
         Iterable<Rental> rentals= rentalRepository.findAll();
 
         for (Rental rental : rentals) {
-            //System.out.println("\n\n##### listener UpdateStatus-bookings-for #### \n\n");
+            System.out.println("\n\n##### listener UpdateStatus-bookings-for #### \n\n");
+            
             if(rental.getVideoId().equals(statusModified.getVideoId()))
             {
                 rental.setStatus(statusModified.getStatus());

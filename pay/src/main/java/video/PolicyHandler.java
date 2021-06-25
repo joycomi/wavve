@@ -39,7 +39,6 @@ public class PolicyHandler{
 
         System.out.println("\n\n##### listener Refund(pay) : " + bookingCancelled.toJson() + "\n\n");
 
-        //Pay pay = new Pay();
         Iterable<Pay> pays= payRepository.findAll();
 
         for (Pay pay : pays) {
@@ -47,9 +46,11 @@ public class PolicyHandler{
             if(pay.getRentId().equals(bookingCancelled.getRentId()))
             {
                 pay.setPrice(bookingCancelled.getRentPrice());
-                pay.setPayStatus(bookingCancelled.getStatus());
+                pay.setStatus(bookingCancelled.getStatus());
+                pay.setPayStatus(bookingCancelled.getPayStatus());
                 pay.setRentId(bookingCancelled.getRentId());
                 pay.setVideoId(bookingCancelled.getVideoId());
+                pay.setStatus(bookingCancelled.getStatus());
         
                 payRepository.save(pay);
 
@@ -75,8 +76,8 @@ public class PolicyHandler{
 
         refund.setPayId(refunded.getPayId());
         refund.setPrice(refunded.getPrice());
-        refund.setPayStatus("Refunded");
         refund.setRentId(refunded.getRentId());
+        refund.setPayStatus("Refunded");
 
         refundRepository.save(refund);
         
@@ -108,7 +109,6 @@ public class PolicyHandler{
         bw.write(str);
         bw.close();
     }
-
 
     @StreamListener(KafkaProcessor.INPUT)
     public void whatever(@Payload String eventString){}

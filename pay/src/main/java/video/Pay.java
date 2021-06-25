@@ -16,13 +16,18 @@ public class Pay {
     private String payStatus;
     private Integer rentId;
     private Integer videoId;
+    //add
+    private String videoTitle;
+    private String status;
+    private String memId;
 
-    @PostPersist
+    @PrePersist
     public void onPostPersist() throws Exception{
         System.out.println("\n\n##### listener Pay-onPostPersist:paid "+ this.getPayStatus().toString() +" ####\n\n");
 
         if(this.getPayStatus().matches("OK")){
             Paid paid = new Paid();
+            this.setStatus("BOOKED");
             BeanUtils.copyProperties(this, paid);
             paid.publishAfterCommit();
         }else{
@@ -77,7 +82,28 @@ public class Pay {
         this.videoId = videoId;
     }
 
+    //add
+    public String getVideoTitle() {
+        return videoTitle;
+    }
 
+    public void setVideoTitle(String videoTitle) {
+        this.videoTitle = videoTitle;
+    }    
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
+    }
+    public String getMemId() {
+        return memId;
+    }
+
+    public void setMemId(String memId) {
+        this.memId = memId;
+    }
 
 
 }

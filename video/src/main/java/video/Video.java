@@ -24,12 +24,20 @@ public class Video {
         videoInfoRegistered.publishAfterCommit();
     }
 
-    @PostUpdate
+    //@PostUpdate
+    @PreUpdate
     public void onPostUpdate(){
         System.out.println("\n\n##### listener Video-PostUpdate : " + this.getVideoId().toString() + ": "+this.getStatus().toString() + "\n\n");
 
         StatusModified statusModified = new StatusModified();
         BeanUtils.copyProperties(this, statusModified);
+        
+        // Video Status Manage
+        if(this.getStatus().matches("CANCELLED") || this.getStatus().matches("RETURNED") )
+            this.setStatus("AVAILABLE");
+        else //BOOKED, RENTED
+            this.setStatus("NotAVAILABLE");
+
         statusModified.publishAfterCommit();
 
 

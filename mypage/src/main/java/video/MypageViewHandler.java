@@ -17,31 +17,27 @@ public class MypageViewHandler {
     private MypageRepository mypageRepository;
 
     @StreamListener(KafkaProcessor.INPUT)
-    public void whenVideoBooked_then_CREATE_1 (@Payload VideoBooked videoBooked) {
+    public void whenPaid_then_CREATE_1 (@Payload Paid paid) {
         try {
 
-            if (!videoBooked.validate()) return;
+            if (!paid.validate()) return;
 
             // view 객체 생성
             Mypage mypage = new Mypage();
             // view 객체에 이벤트의 Value 를 set 함
-            mypage.setRentId(videoBooked.getRentId());
-            mypage.setVideoId(videoBooked.getVideoId());
-            mypage.setVideoTitle(videoBooked.getVideoTitle());
-            mypage.setRentPrice(videoBooked.getRentPrice());
-            
-            if(videoBooked.getStatus().matches("OK"))
-                mypage.setStatus("BOOKED");
-            else
-                mypage.setStatus(videoBooked.getStatus());
-            mypage.setMemId(videoBooked.getMemId());
+            mypage.setRentId(paid.getRentId());
+            mypage.setRentPrice(paid.getPrice());
+            mypage.setVideoId(paid.getVideoId());
+            mypage.setVideoTitle(paid.getVideoTitle());
+            mypage.setStatus(paid.getStatus());
+            mypage.setMemId(paid.getMemId());
             // view 레파지 토리에 save
             mypageRepository.save(mypage);
         
         }catch (Exception e){
             e.printStackTrace();
         }
-    }
+    }    
 
     @StreamListener(KafkaProcessor.INPUT)
     public void whenBookingCancelled_then_UPDATE_1(@Payload BookingCancelled bookingCancelled) {
