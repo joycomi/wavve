@@ -47,8 +47,9 @@ git clone https://github.com/joycomi/wavve.git
 * 고객은 비디오를 예약 할 수 있다.
 * 비디오 예약은 결제가 완료 되어야 할 수 있다.
 * 고객은 비디오 예약을 취소 할 수 있다.
+* 예약 취소 시 자동 환불 되며, 환불 정보는 별도 저장 관리된다.
 * 고객은 예약된 비디오를 대여, 반납 할 수 있다.
-* 비디오의 각 상태(등록,예약,예약취소, 대여, 반납)는 관리 된다.
+* 비디오 상태는 등록,이용 가능여부가 관리 된다.
 * 고객은 비디오 예약정보를 조회 확인 할 수 있다. 
 * 예약대여 서비스는 게이트웨이를 통해 고객과 통신한다.
 
@@ -77,16 +78,16 @@ git clone https://github.com/joycomi/wavve.git
 - Policy의 이동과 컨텍스트 매핑 (점선은 Pub/Sub, 실선은 Req/Res)
 ```
 
-![image](https://user-images.githubusercontent.com/82795806/123125987-fa4bad80-d483-11eb-8b13-57de2caa42d1.png)
+![image](https://user-images.githubusercontent.com/82795806/123370202-35e89380-d5ba-11eb-80e3-18b521e55b2d.png)
 
 
 ## 기능 요구사항 Coverage
 
-![image](https://user-images.githubusercontent.com/82795806/123188689-6c011700-d4d7-11eb-8bb4-db081970bc32.png)
+![image](https://user-images.githubusercontent.com/82795806/123370239-47ca3680-d5ba-11eb-9992-fd8eb68d1fae.png)
 
-![image](https://user-images.githubusercontent.com/82795806/123188812-a36fc380-d4d7-11eb-81d5-a7770b97b9fc.png)
+![image](https://user-images.githubusercontent.com/82795806/123370273-587aac80-d5ba-11eb-94f4-0008e39975f5.png)
 
-![image](https://user-images.githubusercontent.com/82795806/123188843-b97d8400-d4d7-11eb-888f-b2f2e08c5f1c.png)
+![image](https://user-images.githubusercontent.com/82795806/123370300-67615f00-d5ba-11eb-8536-291f6e71693b.png)
 
 ## 헥사고날 아키텍처 다이어그램 도출
 ![image](https://user-images.githubusercontent.com/82795806/123126199-25360180-d484-11eb-8a50-bf462e509a20.png)
@@ -94,6 +95,7 @@ git clone https://github.com/joycomi/wavve.git
 
 ## System Architecture
 ![image](https://user-images.githubusercontent.com/82795806/123126300-3bdc5880-d484-11eb-87bd-22a8203a1782.png)
+
 
 # 구현
 분석/설계 단계에서 도출된 헥사고날 아키텍처에 따라,구현한 각 서비스를 로컬에서 실행하는 방법은 아래와 같다
@@ -114,123 +116,130 @@ mvn spring-boot:run
 cd gateway
 mvn spring-boot:run 
 ```
+
 ## DDD(Domain-Driven-Design)의 적용
 msaez.io 를 통해 구현한 Aggregate 단위로 Entity 를 선언 후, 구현을 진행하였다.
 Entity Pattern 과 Repository Pattern을 적용하기 위해 Spring Data REST 의 RestRepository 를 적용하였다.
 
-rental 서비스의 rental.java 구현
+video 서비스의 Video.java 구현
 
+(<code>video\src\main\java\video\Video.java</code>)
 ```java
-
-...
-package video;
-
-import javax.persistence.*;
-import org.springframework.beans.BeanUtils;
+... 생략 ...
 
 @Entity
-@Table(name="Rental_table")
-public class Rental {
+@Table(name="Video_table")
+public class Video {
 
     @Id
     @GeneratedValue(strategy=GenerationType.AUTO)
-    private Integer rentId;
     private Integer videoId;
-    private String videoTitle;
-    private Integer rentPrice;
+    private String title;
     private String status;
-    private String memId;
 
-    @PostPersist
+    @PrePersist
     public void onPostPersist(){
-        //예약&결제정보 전달
-        VideoBooked videoBooked = new VideoBooked();
-        BeanUtils.copyProperties(this, videoBooked);
-        videoBooked.publishAfterCommit();
+        //비디오 정보 등록
+        VideoInfoRegistered videoInfoRegistered = new VideoInfoRegistered();
+        this.setStatus("Resistered");
+        BeanUtils.copyProperties(this, videoInfoRegistered);
+        videoInfoRegistered.publishAfterCommit();
+    }
 
-        //Pay서비스로 예약정보 전달
-        video.external.Pay pay = new video.external.Pay();
-        pay.setRentId(this.getRentId());
-        pay.setPrice(this.getRentPrice());
-        pay.setPayStatus(this.getStatus()); //OK, NotOK
-        pay.setVideoId(this.getVideoId());
-
-        // mappings goes here
-         RentalApplication.applicationContext.getBean(video.external.PayService.class)
-            .payment(pay);
-        }
-
-    @PostUpdate
+    //@PostUpdate
+    @PreUpdate
     public void onPostUpdate(){
+        System.out.println("\n\n##### listener Video-PostUpdate : " + this.getVideoId().toString() + ": "+this.getStatus().toString() + "\n\n");
 
-        // 예약취소, 대여, 반납 처리 시 이벤트 발생
-        if("CANCEL".equals(this.getStatus())){
-            BookingCancelled bookingCancelled = new BookingCancelled();
-            this.setStatus("CANCELLED");
-            BeanUtils.copyProperties(this, bookingCancelled);
-            bookingCancelled.publishAfterCommit();
-
-        }else if("RENT".equals(this.getStatus())){
-            VideoRented videoRented = new VideoRented();
-            this.setStatus("RENTED");
-            BeanUtils.copyProperties(this, videoRented);
-            videoRented.publishAfterCommit();
+        StatusModified statusModified = new StatusModified();
+        BeanUtils.copyProperties(this, statusModified);
         
-        }else if("RETURN".equals(this.getStatus())){
-            VideoReturned videoReturned = new VideoReturned();
-            this.setStatus("RETURNED");
-            BeanUtils.copyProperties(this, videoReturned);
-            videoReturned.publishAfterCommit();
-        }
+        // Video Status Manage
+        if(this.getStatus().matches("CANCELLED") || this.getStatus().matches("RETURNED") )
+            this.setStatus("AVAILABLE");
+        else //BOOKED, RENTED
+            this.setStatus("NotAVAILABLE");
 
+        statusModified.publishAfterCommit();
     }
 
 ... 생략 ...
 }
 ```
 
- rental 서비스의 PolicyHandler.java 구현
+ video 서비스의 PolicyHandler.java 구현
 
+(<code>video\src\main\java\video\PolicyHandler.java</code>)
 ```java
-package video;
-
-import video.config.kafka.KafkaProcessor;
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.cloud.stream.annotation.StreamListener;
-import org.springframework.messaging.handler.annotation.Payload;
-import org.springframework.stereotype.Service;
-
-import java.util.Optional;
-
 @Service
 public class PolicyHandler{
-    @Autowired RentalRepository rentalRepository;
+    @Autowired VideoRepository videoRepository;
 
     @StreamListener(KafkaProcessor.INPUT)
-    public void wheneverStatusModified_ModifyStatus(@Payload StatusModified statusModified){
+    public void wheneverPaid_ModifyStatus(@Payload Paid paid){
 
-        if(!statusModified.validate()) return;
+        if(!paid.validate()) return;
 
-        Iterable<Rental> rentals= rentalRepository.findAll();
+        System.out.println("\n\n##### listener ModifyStatus(video) : " + paid.toJson() + "\n\n");
+
+        Optional<Video> videoOptional = videoRepository.findById(paid.getVideoId());
+        Video video = videoOptional.get();
+
+        video.setStatus(paid.getStatus());
+        videoRepository.save(video);
+            
+    }
+    @StreamListener(KafkaProcessor.INPUT)
+    public void wheneverBookingCancelled_ModifyStatus(@Payload BookingCancelled bookingCancelled){
+
+        if(!bookingCancelled.validate()) return;
+
+        System.out.println("\n\n##### listener ModifyStatus(video) : " + bookingCancelled.toJson() + "\n\n");
+
+        Optional<Video> videoOptional = videoRepository.findById(bookingCancelled.getVideoId());
+        Video video = videoOptional.get();
+
+        video.setStatus(bookingCancelled.getStatus());
+
+        videoRepository.save(video);
+            
+    }
+    @StreamListener(KafkaProcessor.INPUT)
+    public void wheneverVideoRented_ModifyStatus(@Payload VideoRented videoRented){
+
+        if(!videoRented.validate()) return;
+
+        System.out.println("\n\n##### listener ModifyStatus(video) : " + videoRented.toJson() + "\n\n");
+
+        Optional<Video> videoOptional = videoRepository.findById(videoRented.getVideoId());
+        Video video = videoOptional.get();
         
-        for (Rental rental : rentals) {
-            if(rental.getVideoId().equals(statusModified.getVideoId()))
-            {
-                rental.setStatus(statusModified.getStatus());
-                rentalRepository.save(rental);
+        video.setStatus(videoRented.getStatus());
 
-                break;
-            }
-        }
-           
+        videoRepository.save(video);
+            
+    }
+    @StreamListener(KafkaProcessor.INPUT)
+    public void wheneverVideoReturned_ModifyStatus(@Payload VideoReturned videoReturned){
+
+        if(!videoReturned.validate()) return;
+
+        System.out.println("\n\n##### listener ModifyStatus(video) : " + videoReturned.toJson() + "\n\n");
+
+        Optional<Video> videoOptional = videoRepository.findById(videoReturned.getVideoId());
+        Video video = videoOptional.get();
+        
+        video.setStatus(videoReturned.getStatus());
+
+        videoRepository.save(video);
+            
     }
 ... 생략 ...
 ```
 
- rental 서비스의 BookingRepository.java
+ video 서비스의 RentalRepository.java
 
+(<code>video\src\main\java\video\VideoRepository.java</code>)
 
 ```java
 package video;
@@ -238,8 +247,8 @@ package video;
 import org.springframework.data.repository.PagingAndSortingRepository;
 import org.springframework.data.rest.core.annotation.RepositoryRestResource;
 
-@RepositoryRestResource(collectionResourceRel="rentals", path="rentals")
-public interface RentalRepository extends PagingAndSortingRepository<Rental, Integer>{
+@RepositoryRestResource(collectionResourceRel="videos", path="videos")
+public interface VideoRepository extends PagingAndSortingRepository<Video, Integer>{
 
 }
 ```
@@ -250,6 +259,7 @@ DDD 적용 후 REST API의 테스트를 통하여 정상적으로 동작하는 �
 API GateWay를 통하여 마이크로 서비스들의 진입점을 통일할 수 있다. 
 다음과 같이 GateWay를 적용하였다.
 
+<code>gateway\src\main\resources\application.yml</code>
 ```yaml
 server:
   port: 8088
@@ -347,7 +357,7 @@ mypage 서비스의 DB와 video/rental/pay 서비스의 DB를 다른 DB를 사�
 분석단계에서의 조건 중 하나로  예약대여 시 정상 결제가 되지 않으면 예약이 불가능한 조건을 예약대여(rental)->(pay) 간의 동기 호출을 통해 일관성을 유지하는 트랜잭션으로 처리하기로 하였다. 
 호출 프로토콜은 Rest Repository 에 의해 노출되어있는 REST 서비스를 FeignClient 를 이용하여 호출하도록 한다.
 
--- rental 서비스 내 external.PayService
+-- rental 서비스 내 external/PayService.java 구현
 
 ```java
 ...
@@ -362,38 +372,114 @@ public interface PayService {
 
 -- rental 서비스 내 Req/Resp
 
+<code>rental\src\main\java\video\Rental.java</code>
 ```java
     @PostPersist
-    public void onPostPersist(){
-        //예약&결제정보 전달
+    public void onPostPersist() throws Exception{
 
-        VideoBooked videoBooked = new VideoBooked();
-        BeanUtils.copyProperties(this, videoBooked);
-        videoBooked.publishAfterCommit();
-
-        //Pay서비스로 예약정보 전달
+//Pay서비스로 예약정보 전달
         video.external.Pay pay = new video.external.Pay();
         pay.setRentId(this.getRentId());
         pay.setPrice(this.getRentPrice());
-        pay.setPayStatus(this.getStatus()); //OK, NotOK
-        pay.setVideoId(this.getVideoId());
-
-        // mappings goes here
-         RentalApplication.applicationContext.getBean(video.external.PayService.class)
+        pay.setPayStatus(this.getPayStatus()); //OK, NotOK
+        pay.setVideoId(this.getVideoId()); 
+        pay.setVideoTitle(this.getVideoTitle());
+        pay.setMemId(this.getMemId());
+        
+        RentalApplication.applicationContext.getBean(video.external.PayService.class)
             .payment(pay);
 
         }
+
+    @PostUpdate
+    @PreUpdate
+    public void onPostUpdate(){
+        System.out.println("\n\n##### listener PreUpdate(Rental) : " + this.getRentId().toString()+": "+this.getStatus().toString() + "\n\n");
+
+        // 예약취소, 대여, 반납 처리 시 이벤트 발생
+        if("CANCEL".equals(this.getStatus())){
+            BookingCancelled bookingCancelled = new BookingCancelled();
+            this.setStatus("CANCELLED");
+            this.setPayStatus("Refunded");
+            BeanUtils.copyProperties(this, bookingCancelled);
+            bookingCancelled.publishAfterCommit();
+
+        }else if("RENT".equals(this.getStatus())){
+            VideoRented videoRented = new VideoRented();
+            this.setStatus("RENTED");
+            BeanUtils.copyProperties(this, videoRented);
+            videoRented.publishAfterCommit();
+        
+        }else if("RETURN".equals(this.getStatus())){
+            VideoReturned videoReturned = new VideoReturned();
+            this.setStatus("RETURNED");
+            BeanUtils.copyProperties(this, videoReturned);
+            videoReturned.publishAfterCommit();
+        }
+
+    }
+```
+-- rental 서비스 내 Req/Resp
+
+* 비디오 예약 시, 결제 OK/NotOK를 Pay서비스에서 체크하여 예약 처리 여부 결정
+<code>pay\src\main\java\video\Pay.java</code>
+```java
+    @PrePersist
+    public void onPostPersist() throws Exception{
+        System.out.println("\n\n##### listener Pay-onPostPersist:paid "+ this.getPayStatus().toString() +" ####\n\n");
+
+        if(this.getPayStatus().matches("OK")){
+            Paid paid = new Paid();
+            this.setStatus("BOOKED");
+            BeanUtils.copyProperties(this, paid);
+            paid.publishAfterCommit();
+        }else{
+            throw new Exception("Pay is Not OK Received!!");
+        }
+    }
+
+    //@PostUpdate
+    @PreUpdate
+    public void onPostUpdate(){
+        System.out.println("\n\n##### listener Pay-onPostUpdate:Refunded "+ this.getRentId().toString()+": "+ this.getPrice().toString() +" ####\n\n");
+
+        Refunded refunded = new Refunded();
+        BeanUtils.copyProperties(this, refunded);
+        refunded.publishAfterCommit();
+    }
 ```
 
 ### 동작 확인
 ---
-
-* 비디오 예약 시, 결제 OK/NotOK 여부 체크
-
 -- 결제가 OK이면, 예약 처리(BOOKED)
+```sh
+
+-비디오 정보등록
+http POST http:///EXTERNAL-IP:8080/videos title=AAA
+
+-비디오 예약
+http POST http://EXTERNAL-IP:8080/rentals videoId=1 videoTitle=AAA rentPrice=1000 payStatus=OK memId=Z
+
+```
+
+- rentals
+
 ![image](https://user-images.githubusercontent.com/82795806/123216933-03c92a00-d505-11eb-96cc-bbd99f92075a.png)
 
+- videos
+
+![image](https://user-images.githubusercontent.com/82795806/123371112-0dfa2f80-d5bc-11eb-9aa6-198d8b7c5a60.png)
+
 -- 결제가 NotOK이면, 예약 불가 처리(Internal Server Error)
+```sh
+
+-비디오 정보등록
+-비디오 정보등록
+http POST http:///EXTERNAL-IP:8080/videos title=AAB
+
+-비디오 예약
+http POST http://EXTERNAL-IP:8080/rentals videoId=2 videoTitle=AAB rentPrice=1000 payStatus=NotOK memId=Z
+```
 ![image](https://user-images.githubusercontent.com/82795806/123217040-1ba0ae00-d505-11eb-9a8f-d61281a1078e.png)
 
 # 운영
@@ -789,7 +875,7 @@ kubectl exec -it pod/pay-7df9779d8f-vk4q9 -n wavve -- /bin/sh
 $ cd /mnt/azure/logs
 $ tail -n 20 -f refunded.log
 ```
-![image](https://user-images.githubusercontent.com/82795806/123204736-a4165300-d4f3-11eb-8b53-ed050b288876.png)
+![image](https://user-images.githubusercontent.com/82795806/123372114-f6bc4180-d5bd-11eb-8ce6-c70a2187668d.png)
 
 pay서비스 PolicyHandler 구현 (pay\src\main\java\video\PolicyHandler.java)
 
@@ -872,7 +958,10 @@ export PATH=$PWD/bin:$PATH
 istioctl install --set profile=demo --set hub=gcr.io/istio-release
 ※ Docker Hub Rate Limiting 우회 설정
 ```
-(추가-결과화면)
+
+![image](https://user-images.githubusercontent.com/82795806/123373337-33893800-d5c0-11eb-90dd-9bd41b9c5e75.png)
+
+![image](https://user-images.githubusercontent.com/82795806/123373304-23715880-d5c0-11eb-9449-c8a98e0ea90c.png)
 
 - namespace에 istio주입
 
@@ -901,9 +990,9 @@ $ kubectl label namespace wavve istio-injection=enabled
 ![image](https://user-images.githubusercontent.com/82795806/123223846-34f92880-d50c-11eb-9769-e69f55ca94b4.png)
 
 
-- 서비스 재배포 후 Pod에 CB 부착 확인
+- 서비스(deploy) 재배포 후 Pod에 CB 부착 확인
 
-![image](https://user-images.githubusercontent.com/82795806/123238029-21a08a00-d519-11eb-8e63-2a8d8267bac8.png)
+![image](https://user-images.githubusercontent.com/82795806/123373188-edcc6f80-d5bf-11eb-9348-604725d78782.png)
 
 
 - Siege pod에 진입하여 워크로드를 걸어준다.
@@ -916,7 +1005,7 @@ kubectl exec -it pod/siege -c siege -n wavve -- /bin/bash
   (동시사용자 150명, 10초 동안 실시)
 
 ```sh
-$ siege -c150 -t10S -v --content-type "application/json" 'http://rental:8080/rentals POST {"videoId":1, "videoTitle":"AAB", "rentPrice":1000, "status":"OK", "memId":"Z"}'
+$ siege -c150 -t10S -v --content-type "application/json" 'http://rental:8080/rentals POST {"videoId":1, "videoTitle":"AAB", "rentPrice":1000, "payStatus":"OK", "memId":"Z"}'
 ```
 ![image](https://user-images.githubusercontent.com/82795806/123239397-46493180-d51a-11eb-9cf1-c9e7d4451191.png)
 
@@ -967,7 +1056,7 @@ $ kubectl exec -it pod/siege -c siege -n wavve -- /bin/bash
   (동시사용자 150명, 10초 동안 실시)
 
 ```sh
-$ siege -c150 -t10S -v --content-type "application/json" 'http://rental:8080/rentals POST {"videoId":1, "videoTitle":"AAB", "rentPrice":1000, "status":"OK", "memId":"Z"}'
+$ siege -c150 -t10S -v --content-type "application/json" 'http://rental:8080/rentals POST {"videoId":1, "videoTitle":"AAB", "rentPrice":1000, "payStatus":"OK", "memId":"Z"}'
 ```
 
 - 오토스케일이 어떻게 되고 있는지 모니터링을 걸어둔다:
